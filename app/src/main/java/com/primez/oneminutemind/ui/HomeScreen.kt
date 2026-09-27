@@ -224,56 +224,41 @@ private fun BrainCard(vm: AppViewModel) {
 }
 
 /**
- * Today's Brain Score (0–100): the three ranked daily games and how well each went.
- * Before today's challenge is finished it explains how to get it.
+ * Today's Brain Score (0–100) with one bar per skill of today's ranked games.
+ * [big] is the centred version used at the top of the Stats page.
  */
 @Composable
 fun TodayBrain(vm: AppViewModel, big: Boolean) {
     val p = vm.progress
     val today = p.todayBrain
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("TODAY'S BRAIN SCORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        if (today.isEmpty()) "–" else "${p.brainScore}",
-                        fontSize = if (big) 64.sp else 44.sp, fontWeight = FontWeight.Black, color = Brand.violet,
-                    )
-                    Text(" / 100", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = if (big) 12.dp else 8.dp))
-                }
-            }
-            if (!big) Text("See stats ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        }
-        Gap(6.dp)
-        // Skills of today's ranked games (they rotate every day). Filled in once today's challenge is done.
-        val rows: List<Pair<GameId, Int?>> =
-            if (today.isNotEmpty()) today else Daily.gamesFor(Days.today()).map { it to null }
-        rows.forEach { (g, rating) ->
-            Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(0.4f)) {
-                    Text("${g.skill.emoji} ${g.skill.label}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text(g.title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-                Bar((rating ?: 0) / 100f, Brand.skill(g.skill), Modifier.weight(0.48f), height = 8.dp)
-                Text(rating?.toString() ?: "–", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
-            }
-        }
-        Gap(4.dp)
-        if (today.isEmpty()) {
-            Text(
-                "Play today's challenge to get your Brain Score. The skills change every day with the ranked games.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (!p.playedDailyToday) {
-                Gap(10.dp)
-                BigButton(if (p.todayDailyScores.isEmpty()) "Play today's challenge" else "Continue today's challenge", onClick = vm::startDaily)
-            }
+    // Skills of today's ranked games (they rotate every day); "–" until today's challenge is done.
+    val rows: List<Pair<GameId, Int?>> =
+        if (today.isNotEmpty()) today else Daily.gamesFor(Days.today()).map { it to null }
+    val score = if (today.isEmpty()) "–" else "${p.brainScore}"
+
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (big) Alignment.CenterHorizontally else Alignment.Start) {
+        if (big) {
+            Text("Brain Score", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(score, fontSize = 64.sp, fontWeight = FontWeight.Black, color = Brand.violet)
+            Text("out of 100", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Gap()
         } else {
-            Text(
-                "New games tomorrow, new Brain Score.",
-                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("BRAIN SCORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(score, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
+                }
+                Text("See stats ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            Gap(8.dp)
+        }
+        rows.forEach { (g, rating) ->
+            val s = g.skill
+            Row(Modifier.padding(vertical = if (big) 4.dp else 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${s.emoji} ${s.label}", Modifier.weight(if (big) 0.3f else 0.34f), style = MaterialTheme.typography.bodyMedium)
+                Bar((rating ?: 0) / 100f, Brand.skill(s), Modifier.weight(if (big) 0.58f else 0.56f), height = if (big) 10.dp else 8.dp)
+                Text(rating?.toString() ?: "–", Modifier.weight(if (big) 0.12f else 0.1f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

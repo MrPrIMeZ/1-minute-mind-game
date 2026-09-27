@@ -96,9 +96,8 @@ object ShareCard {
         c.drawRoundRect(panel, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white; alpha = 38 })
         var rowY = y + 95f
         rows.forEach { (g, v) ->
-            val label = text(40f).apply { textAlign = Paint.Align.LEFT }
-            c.drawText("${g.skill.emoji} ${g.skill.label}", 130f, rowY - 8f, label)
-            c.drawText(g.title, 130f, rowY + 34f, text(30f, bold = false, alpha = 200).apply { textAlign = Paint.Align.LEFT })
+            val label = text(44f).apply { textAlign = Paint.Align.LEFT }
+            c.drawText("${g.skill.emoji} ${g.skill.label}", 130f, rowY, label)
             val barL = 590f; val barR = W - 200f
             val track = RectF(barL, rowY - 30f, barR, rowY + 2f)
             c.drawRoundRect(track, 16f, 16f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white; alpha = 60 })
