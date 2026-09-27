@@ -29,6 +29,8 @@ android {
         buildConfigField("String", "ADMOB_REWARDED_ID", "\"${prop("ADMOB_REWARDED_ID")}\"")
         buildConfigField("boolean", "ADS_TESTING", prop("ADS_TESTING", "true"))
         buildConfigField("String", "PRIVACY_POLICY_URL", "\"${prop("PRIVACY_POLICY_URL")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${prop("SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${prop("SUPABASE_ANON_KEY")}\"")
     }
 
     signingConfigs {

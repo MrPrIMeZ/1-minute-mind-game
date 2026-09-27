@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -18,6 +17,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.primez.oneminutemind.data.AppTheme
 import com.primez.oneminutemind.game.Skill
 
 object Brand {
@@ -44,7 +44,7 @@ object Brand {
     )
 }
 
-private val DarkColors = darkColorScheme(
+private val MidnightColors = darkColorScheme(
     primary = Brand.violet,
     onPrimary = Color.White,
     secondary = Brand.coral,
@@ -58,7 +58,21 @@ private val DarkColors = darkColorScheme(
     outline = Color(0xFF3A3B66),
 )
 
-private val LightColors = lightColorScheme(
+private val OceanColors = darkColorScheme(
+    primary = Color(0xFF22B8CF),
+    onPrimary = Color(0xFF00212A),
+    secondary = Color(0xFFFF8A65),
+    tertiary = Color(0xFF4ADE80),
+    background = Color(0xFF051A26),
+    onBackground = Color(0xFFE3F4FB),
+    surface = Color(0xFF0B2A3B),
+    onSurface = Color(0xFFE3F4FB),
+    surfaceVariant = Color(0xFF123B52),
+    onSurfaceVariant = Color(0xFFA5C6D6),
+    outline = Color(0xFF235671),
+)
+
+private val DaylightColors = lightColorScheme(
     primary = Brand.violetDeep,
     onPrimary = Color.White,
     secondary = Color(0xFFE5484D),
@@ -86,10 +100,16 @@ private val AppTypography = Typography(
 
 val MonoNumbers = TextStyle(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
+fun AppTheme.isDark() = this != AppTheme.DAYLIGHT
+
 @Composable
-fun MindTheme(content: @Composable () -> Unit) {
+fun MindTheme(theme: AppTheme, content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
+        colorScheme = when (theme) {
+            AppTheme.DAYLIGHT -> DaylightColors
+            AppTheme.MIDNIGHT -> MidnightColors
+            AppTheme.OCEAN -> OceanColors
+        },
         typography = AppTypography,
         content = content,
     )

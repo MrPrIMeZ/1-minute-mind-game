@@ -41,7 +41,16 @@ class Store(context: Context) {
         put("bestMemory", p.bestMemory)
         put("totalCorrect", p.totalCorrect)
         put("onboarded", p.onboarded)
+        put("dailyProgressDay", p.dailyProgressDay)
+        put("dailyProgressScores", JSONArray(p.dailyProgressScores))
+        put("lastSubmittedDay", p.lastSubmittedDay)
+        p.player?.let { pl ->
+            put("player", JSONObject().apply {
+                put("id", pl.id); put("secret", pl.secret); put("name", pl.name); put("state", pl.state)
+            })
+        }
         put("settings", JSONObject().apply {
+            put("theme", p.settings.theme.name)
             put("sound", p.settings.sound)
             put("haptics", p.settings.haptics)
             put("reminder", p.settings.reminder)
@@ -67,6 +76,10 @@ class Store(context: Context) {
         } ?: emptyMap()
         val ach = o.optJSONArray("achievements")?.let { a -> List(a.length()) { a.optString(it) }.toSet() } ?: emptySet()
         val s = o.optJSONObject("settings") ?: JSONObject()
+        val dps = o.optJSONArray("dailyProgressScores")?.let { a -> List(a.length()) { a.optInt(it) } } ?: emptyList()
+        val player = o.optJSONObject("player")?.let {
+            Player(it.optString("id"), it.optString("secret"), it.optString("name"), it.optString("state"))
+        }?.takeIf { it.id.isNotBlank() && it.secret.isNotBlank() }
         val d = Settings()
         return Progress(
             xp = o.optInt("xp"),
@@ -83,7 +96,12 @@ class Store(context: Context) {
             bestMemory = o.optInt("bestMemory"),
             totalCorrect = o.optInt("totalCorrect"),
             onboarded = o.optBoolean("onboarded"),
+            dailyProgressDay = o.optInt("dailyProgressDay"),
+            dailyProgressScores = dps,
+            player = player,
+            lastSubmittedDay = o.optInt("lastSubmittedDay"),
             settings = Settings(
+                theme = AppTheme.fromName(s.optString("theme", "")),
                 sound = s.optBoolean("sound", d.sound),
                 haptics = s.optBoolean("haptics", d.haptics),
                 reminder = s.optBoolean("reminder", d.reminder),

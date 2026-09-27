@@ -86,6 +86,7 @@ fun HomeScreen(vm: AppViewModel) {
             item(span = { GridItemSpan(2) }) { DailyCard(vm, onSaveStreak = {
                 Ads.showRewarded(context.findActivity()) { vm.saveStreak() }
             }) }
+            item(span = { GridItemSpan(2) }) { BoardCard(vm) }
             item(span = { GridItemSpan(2) }) { BrainCard(vm) }
             item(span = { GridItemSpan(2) }) { SectionTitle("Practice · pick any game") }
             items(GameId.entries) { g -> GameTile(g, p.bestScores[g] ?: 0) { vm.startPractice(g) } }
@@ -110,7 +111,11 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text("DAILY CHALLENGE", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
                     Text(
-                        if (done) "Done for today ✓" else "3 games · 3 minutes",
+                        when {
+                            done -> "Completed today ✓"
+                            p.todayDailyScores.isNotEmpty() -> "${p.todayDailyScores.size} of 3 done"
+                            else -> "3 games · 3 minutes"
+                        },
                         color = Color.White, style = MaterialTheme.typography.headlineSmall,
                     )
                 }
@@ -121,12 +126,20 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
             }
             Gap()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                games.forEach { g ->
+                val played = p.todayDailyScores
+                games.forEachIndexed { i, g ->
+                    val score = played.getOrNull(i)
                     Box(Modifier.weight(1f)) {
-                        Card(color = Color.White.copy(alpha = 0.16f), padding = 10.dp) {
+                        Card(color = Color.White.copy(alpha = if (score != null) 0.30f else 0.16f), padding = 10.dp) {
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(g.emoji, fontSize = 24.sp)
+                                Text(if (score != null) "✅" else g.emoji, fontSize = 24.sp)
                                 Text(g.title, color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                Text(
+                                    if (score != null) "$score pts" else "Game ${i + 1}",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (score != null) FontWeight.Bold else FontWeight.Normal,
+                                )
                             }
                         }
                     }
@@ -141,7 +154,11 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                     GhostOnColor("🎬 Save your ${p.streak}-day streak (watch an ad)", enabled = Ads.rewardedReady, onClick = onSaveStreak)
                     Gap(8.dp)
                 }
-                BigButton("Play today's challenge", onClick = vm::startDaily, color = Color(0xFF1B1446))
+                val next = p.todayDailyScores.size
+                BigButton(
+                    if (next == 0) "Play today's challenge" else "Continue: game ${next + 1} of 3",
+                    onClick = vm::startDaily, color = Color(0xFF1B1446),
+                )
             }
         }
     }
@@ -196,6 +213,27 @@ private fun GameTile(g: GameId, best: Int, onClick: () -> Unit) {
                 color = if (best > 0) Brand.skill(g.skill) else Brand.coral,
                 fontWeight = FontWeight.Bold,
             )
+        }
+    }
+}
+
+@Composable
+private fun BoardCard(vm: AppViewModel) {
+    val player = vm.progress.player
+    Card(onClick = { vm.go(Screen.Board) }, padding = 14.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("🏆", fontSize = 30.sp)
+            HGap()
+            Column(Modifier.weight(1f)) {
+                Text("Scoreboard", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (player == null) "Sign up and see your rank in India and your state"
+                    else "${player.name} · ${player.state}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text("›", fontSize = 26.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
 }

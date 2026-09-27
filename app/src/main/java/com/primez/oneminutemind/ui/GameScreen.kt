@@ -116,7 +116,14 @@ fun GameScreen(vm: AppViewModel, play: Screen.Play) {
         roundIndex++
     }
 
-    BackHandler { vm.back() }
+    // Leaving a daily game after it has started ends it with the score so far
+    // (so nobody can quit and retry a bad run for the scoreboard).
+    fun quit() {
+        if (play.mode == Mode.DAILY && (phase == Phase.PLAYING || phase == Phase.TIME_UP)) finish()
+        else if (phase != Phase.DONE) vm.back()
+    }
+
+    BackHandler { quit() }
 
     // 3-2-1 countdown
     LaunchedEffect(phase) {
@@ -170,7 +177,7 @@ fun GameScreen(vm: AppViewModel, play: Screen.Play) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
             // ---------- HUD ----------
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { vm.back() }) { Icon(Icons.Filled.Close, "Quit") }
+                IconButton(onClick = ::quit) { Icon(Icons.Filled.Close, "Quit") }
                 Text(game.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                 if (play.mode == Mode.DAILY) Pill("Daily ${vmDailyNumber(vm, play)}/${Daily.GAMES}", Brand.coral)
             }
@@ -271,6 +278,10 @@ private fun Intro(vm: AppViewModel, play: Screen.Play, onStart: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
         )
         if (best > 0) { Gap(10.dp); Text("Your best: $best", fontWeight = FontWeight.Bold, color = Brand.gold) }
+        if (play.mode == Mode.DAILY) {
+            Gap(10.dp)
+            Pill("One try only · counts for the scoreboard", Brand.coral)
+        }
         Gap(28.dp)
         BigButton("Start", onClick = onStart, color = Brand.skill(g.skill))
     }

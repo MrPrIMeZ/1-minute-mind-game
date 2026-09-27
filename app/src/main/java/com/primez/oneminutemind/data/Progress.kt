@@ -22,7 +22,23 @@ object Days {
     }
 }
 
+/** The three looks the player can pick in Settings. */
+enum class AppTheme(val label: String, val emoji: String) {
+    DAYLIGHT("Daylight", "☀️"),
+    MIDNIGHT("Midnight", "🌙"),
+    OCEAN("Ocean", "🌊"),
+    ;
+
+    companion object {
+        fun fromName(name: String?) = entries.firstOrNull { it.name == name } ?: DAYLIGHT
+    }
+}
+
+/** Online scoreboard identity. [secret] proves it's you when sending scores. */
+data class Player(val id: String, val secret: String, val name: String, val state: String)
+
 data class Settings(
+    val theme: AppTheme = AppTheme.DAYLIGHT,
     val sound: Boolean = true,
     val haptics: Boolean = true,
     val reminder: Boolean = true,
@@ -47,7 +63,24 @@ data class Progress(
     val totalCorrect: Int = 0,
     val onboarded: Boolean = false,
     val settings: Settings = Settings(),
+    /** Daily games finished so far on [dailyProgressDay], in order. */
+    val dailyProgressDay: Int = 0,
+    val dailyProgressScores: List<Int> = emptyList(),
+    val player: Player? = null,
+    /** Last day whose daily total was sent to the scoreboard. */
+    val lastSubmittedDay: Int = 0,
 ) {
+    /** Scores of today's daily games already played (0 to 3 entries). */
+    val todayDailyScores: List<Int>
+        get() = if (dailyProgressDay == Days.today()) dailyProgressScores else emptyList()
+
+    /** Today's finished daily total that still has to be sent to the scoreboard, if any. */
+    val pendingSubmission: Int?
+        get() {
+            val today = Days.today()
+            return if (lastDailyDay == today && lastSubmittedDay != today) dailyScores[today] else null
+        }
+
     val level: LevelInfo get() = Levels.of(xp)
     val playedDailyToday: Boolean get() = lastDailyDay == Days.today()
 
@@ -182,6 +215,17 @@ object Rules {
             bestMemory = maxOf(p.bestMemory, r.bestMemory),
             totalCorrect = p.totalCorrect + r.correct,
         )
+    }
+
+    /**
+     * Saves one finished daily game straight away, so leaving half-way never loses it.
+     * After the last game the day is marked done and the streak goes up.
+     */
+    fun recordDailyGame(p: Progress, score: Int, today: Int = Days.today()): Progress {
+        if (p.lastDailyDay == today) return p
+        val done = (if (p.dailyProgressDay == today) p.dailyProgressScores else emptyList()) + score
+        val next = p.copy(dailyProgressDay = today, dailyProgressScores = done)
+        return if (done.size >= Daily.GAMES) completeDaily(next, done.sum(), today) else next
     }
 
     fun completeDaily(p: Progress, total: Int, today: Int = Days.today()): Progress {

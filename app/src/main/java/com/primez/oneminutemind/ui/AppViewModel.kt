@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.primez.oneminutemind.data.Achievements
 import com.primez.oneminutemind.data.Daily
 import com.primez.oneminutemind.data.Days
@@ -17,6 +18,9 @@ import com.primez.oneminutemind.data.xpFor
 import com.primez.oneminutemind.game.GameId
 import com.primez.oneminutemind.game.GameResult
 import com.primez.oneminutemind.notify.Reminder
+import com.primez.oneminutemind.online.Scoreboard
+import com.primez.oneminutemind.online.ScoreboardException
+import kotlinx.coroutines.launch
 
 enum class Mode { PRACTICE, DAILY }
 
@@ -26,10 +30,11 @@ sealed interface Screen {
     data object Stats : Screen
     data object Awards : Screen
     data object Settings : Screen
+    data object Board : Screen
     /** [key] makes every new game a fresh screen, even for the same game twice. */
     data class Play(val game: GameId, val mode: Mode, val seed: Long, val key: Long) : Screen
     data class Result(val info: ResultInfo) : Screen
-    data class DailyDone(val total: Int, val streak: Int, val games: List<GameResult>) : Screen
+    data class DailyDone(val total: Int, val streak: Int, val games: List<Pair<GameId, Int>>) : Screen
 }
 
 data class ResultInfo(
@@ -58,12 +63,53 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Set after the first game so the app can ask for notification permission once. */
     var askNotificationPermission by mutableStateOf(false)
 
-    private var dailyResults = mutableListOf<GameResult>()
-    private var dailyIndex = 0
     private var gameCounter = 0L
+
+    private var submitting = false
 
     init {
         applySettings(progress.settings, reschedule = true)
+        submitPendingScore()
+    }
+
+    // ---------- scoreboard ----------
+
+    /** Sends today's finished daily total if it hasn't been sent yet (retries on next launch if offline). */
+    fun submitPendingScore() {
+        val player = progress.player ?: return
+        val total = progress.pendingSubmission ?: return
+        if (submitting || !Scoreboard.configured) return
+        submitting = true
+        val day = Days.today()
+        viewModelScope.launch {
+            try {
+                Scoreboard.submit(player, day, total)
+                save(progress.copy(lastSubmittedDay = day))
+            } catch (_: ScoreboardException) {
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    /** Sign up with a username and state. [done] gets an error message, or null on success. */
+    fun signUp(name: String, state: String, done: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val existing = progress.player
+                val player = if (existing == null) {
+                    Scoreboard.register(name, state)
+                } else {
+                    Scoreboard.update(existing, name, state)
+                    existing.copy(name = name.trim(), state = state)
+                }
+                save(progress.copy(player = player))
+                submitPendingScore()
+                done(null)
+            } catch (e: ScoreboardException) {
+                done(e.message)
+            }
+        }
     }
 
     // ---------- navigation ----------
@@ -88,11 +134,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val todaysGames: List<GameId> get() = Daily.gamesFor(Days.today())
 
+    /** Index of the next daily game to play today (0..2), or 3 when all are done. */
+    val nextDailyIndex: Int get() = progress.todayDailyScores.size
+
+    /** Starts (or continues) today's challenge at the first game not yet played. */
     fun startDaily() {
-        if (progress.playedDailyToday) return
-        dailyResults = mutableListOf()
-        dailyIndex = 0
-        go(playScreen(todaysGames[0], Mode.DAILY, Daily.seedFor(Days.today(), 0)))
+        val i = nextDailyIndex
+        if (progress.playedDailyToday || i >= Daily.GAMES) return
+        go(playScreen(todaysGames[i], Mode.DAILY, Daily.seedFor(Days.today(), i)))
     }
 
     fun startPractice(game: GameId) {
@@ -108,11 +157,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun finishGame(result: GameResult, mode: Mode) {
         val before = progress
+        val dailyIndex = before.todayDailyScores.size
         val xp = xpFor(result, mode == Mode.DAILY)
         var p = Rules.applyGame(before, result, xp)
-        if (mode == Mode.DAILY) dailyResults.add(result)
-        val finishingDaily = mode == Mode.DAILY && dailyResults.size >= Daily.GAMES
-        if (finishingDaily) p = Rules.completeDaily(p, dailyResults.sumOf { it.score })
+        if (mode == Mode.DAILY) p = Rules.recordDailyGame(p, result.score)
         val unlocked = Achievements.check(p, result)
         p = Rules.unlock(p, unlocked)
         save(p)
@@ -128,14 +176,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             dailyIndex = dailyIndex,
         )
         replace(Screen.Result(info))
+        if (p.playedDailyToday) submitPendingScore()
     }
 
     fun nextDailyGame() {
-        dailyIndex++
-        if (dailyIndex >= Daily.GAMES) {
-            replace(Screen.DailyDone(dailyResults.sumOf { it.score }, progress.streak, dailyResults.toList()))
+        val i = nextDailyIndex
+        if (i >= Daily.GAMES) {
+            val scores = progress.todayDailyScores
+            replace(Screen.DailyDone(scores.sum(), progress.streak, todaysGames.zip(scores)))
         } else {
-            replace(playScreen(todaysGames[dailyIndex], Mode.DAILY, Daily.seedFor(Days.today(), dailyIndex)))
+            replace(playScreen(todaysGames[i], Mode.DAILY, Daily.seedFor(Days.today(), i)))
         }
     }
 
@@ -174,7 +224,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun resetProgress() {
         val keep = progress.settings
         store.clear()
-        save(Progress(onboarded = true, settings = keep))
+        save(Progress(onboarded = true, settings = keep, player = progress.player))
         home()
     }
 

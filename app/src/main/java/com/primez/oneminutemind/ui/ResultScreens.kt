@@ -160,10 +160,10 @@ fun DailyDoneScreen(vm: AppViewModel, s: Screen.DailyDone) {
                     Column {
                         Text("Total", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${s.total}", fontSize = 56.sp, fontWeight = FontWeight.Black, color = Brand.violet)
-                        s.games.forEach { g ->
+                        s.games.forEach { (game, score) ->
                             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("${g.game.emoji}  ${g.game.title}", Modifier.weight(1f))
-                                Text("${g.score}", fontWeight = FontWeight.Bold)
+                                Text("${game.emoji}  ${game.title}", Modifier.weight(1f))
+                                Text("$score", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -176,6 +176,8 @@ fun DailyDoneScreen(vm: AppViewModel, s: Screen.DailyDone) {
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
                     context.startActivity(Intent.createChooser(send, "Share your score"))
                 })
+                Gap(10.dp)
+                GhostButton("🏆  See my rank", onClick = { vm.home(); vm.go(Screen.Board) })
                 Gap(10.dp)
                 GhostButton("Home", onClick = vm::home)
                 Gap(10.dp)

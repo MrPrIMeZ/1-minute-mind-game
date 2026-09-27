@@ -5,6 +5,13 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.primez.oneminutemind.data.AppTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,11 +67,12 @@ import com.primez.oneminutemind.notify.Reminder
 @Composable
 fun OnboardingScreen(vm: AppViewModel) {
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .statusBarsPadding().navigationBarsPadding().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("🧠", fontSize = 88.sp)
+        Text("🧠", fontSize = 72.sp)
         Gap(12.dp)
         Text("1 Minute Mind Game", style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
         Gap(8.dp)
@@ -84,7 +92,12 @@ fun OnboardingScreen(vm: AppViewModel) {
                 Text(t, style = MaterialTheme.typography.bodyLarge)
             }
         }
-        Gap(40.dp)
+        Gap(28.dp)
+        Text("Pick your look", style = MaterialTheme.typography.titleMedium)
+        Gap(10.dp)
+        val s = vm.progress.settings
+        ThemePicker(s.theme) { vm.updateSettings(s.copy(theme = it)) }
+        Gap(28.dp)
         BigButton("Let's go!", onClick = vm::finishOnboarding)
     }
 }
@@ -232,6 +245,8 @@ fun SettingsScreen(vm: AppViewModel) {
     Column(Modifier.fillMaxSize().navigationBarsPadding()) {
         TopBar("Settings", onBack = { vm.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            SectionTitle("Theme")
+            ThemePicker(s.theme) { vm.updateSettings(s.copy(theme = it)) }
             SectionTitle("Game")
             Card(padding = 4.dp) {
                 Column {
@@ -316,6 +331,46 @@ private fun LinkRow(label: String, value: String, enabled: Boolean = true, onCli
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                 Text(value.ifEmpty { "›" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+
+/** Three theme cards with a small preview of each look. */
+@Composable
+fun ThemePicker(selected: AppTheme, onPick: (AppTheme) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        AppTheme.entries.forEach { t ->
+            val (bg, card, accent) = when (t) {
+                AppTheme.DAYLIGHT -> Triple(Color(0xFFF5F4FF), Color.White, Color(0xFF5B3DF5))
+                AppTheme.MIDNIGHT -> Triple(Color(0xFF0E0F22), Color(0xFF23244A), Color(0xFF7C5CFF))
+                AppTheme.OCEAN -> Triple(Color(0xFF051A26), Color(0xFF123B52), Color(0xFF22B8CF))
+            }
+            val isOn = t == selected
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(
+                        if (isOn) 3.dp else 1.dp,
+                        if (isOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        RoundedCornerShape(18.dp),
+                    )
+                    .clickable { onPick(t) }
+                    .background(bg)
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(Modifier.fillMaxWidth().height(14.dp).clip(RoundedCornerShape(7.dp)).background(accent))
+                Gap(6.dp)
+                Box(Modifier.fillMaxWidth().height(22.dp).clip(RoundedCornerShape(7.dp)).background(card))
+                Gap(8.dp)
+                Text(
+                    "${t.emoji} ${t.label}",
+                    color = if (t == AppTheme.DAYLIGHT) Color(0xFF15152E) else Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                )
             }
         }
     }

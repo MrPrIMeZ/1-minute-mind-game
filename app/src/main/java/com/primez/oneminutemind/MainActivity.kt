@@ -3,7 +3,9 @@ package com.primez.oneminutemind
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.graphics.Color
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,10 +25,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.primez.oneminutemind.ads.Ads
 import com.primez.oneminutemind.ui.AppViewModel
 import com.primez.oneminutemind.ui.AwardsScreen
+import com.primez.oneminutemind.ui.BoardScreen
 import com.primez.oneminutemind.ui.DailyDoneScreen
 import com.primez.oneminutemind.ui.GameScreen
 import com.primez.oneminutemind.ui.HomeScreen
 import com.primez.oneminutemind.ui.MindTheme
+import com.primez.oneminutemind.ui.isDark
 import com.primez.oneminutemind.ui.OnboardingScreen
 import com.primez.oneminutemind.ui.ResultScreen
 import com.primez.oneminutemind.ui.Screen
@@ -40,13 +44,21 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Ads.start(this)
         setContent {
-            MindTheme { App() }
+            val vm: AppViewModel = viewModel()
+            val theme = vm.progress.settings.theme
+            // Status-bar icons follow the chosen theme, not the phone's dark mode.
+            LaunchedEffect(theme) {
+                val bar = if (theme.isDark()) SystemBarStyle.dark(Color.TRANSPARENT)
+                else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = bar, navigationBarStyle = bar)
+            }
+            MindTheme(theme) { App(vm) }
         }
     }
 }
 
 @Composable
-private fun App(vm: AppViewModel = viewModel()) {
+private fun App(vm: AppViewModel) {
     // Ask for notification permission once (Android 13+), after the first game or when
     // the player turns the reminder on.
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -78,6 +90,7 @@ private fun App(vm: AppViewModel = viewModel()) {
                 Screen.Stats -> StatsScreen(vm)
                 Screen.Awards -> AwardsScreen(vm)
                 Screen.Settings -> SettingsScreen(vm)
+                Screen.Board -> BoardScreen(vm)
                 is Screen.Play -> GameScreen(vm, s)
                 is Screen.Result -> ResultScreen(vm, s.info)
                 is Screen.DailyDone -> DailyDoneScreen(vm, s)
