@@ -49,12 +49,23 @@ language sql immutable as $$
   ]);
 $$;
 
+-- Usernames are public, so block offensive words (also written with numbers, e.g. "5h1t")
+-- and names that pretend to be staff.
+create or replace function public.mm_bad_name(p_name text) returns boolean
+language sql immutable as $$
+  select regexp_replace(translate(lower(p_name), '013457$@', 'oieastsa'), '[^a-z]', '', 'g')
+         ~ '(fuck|fuk|fck|fack|phuck|phuk|shit|bitch|bastard|dick|pussy|cunt|whore|slut|porn|sex|rape|nigg|fag|cock|boob|penis|vagina|asshole|motherf|chutiya|chutia|madarchod|maderchod|behenchod|bhenchod|benchod|bhosd|gandu|gaandu|randi|lund|lauda|lavda|harami|bsdk|punda|thevidiya|thevdiya|koothi|oombu|admin|moderator|official)';
+$$;
+
 create or replace function public.mm_check_profile(p_name text, p_state text) returns text
 language plpgsql immutable as $$
 declare n text := btrim(p_name);
 begin
   if n is null or length(n) < 3 or length(n) > 16 or n !~ '^[A-Za-z0-9_. -]+$' then
     raise exception 'bad_name';
+  end if;
+  if public.mm_bad_name(n) then
+    raise exception 'rude_name';
   end if;
   if not public.mm_valid_state(p_state) then
     raise exception 'bad_state';
@@ -110,6 +121,14 @@ begin
   on conflict (player_id, day) do update set score = greatest(daily_scores.score, excluded.score);
 end $$;
 
+-- Deletes the player and all their scores (the "Delete my scoreboard profile" button).
+create or replace function public.delete_player(p_id uuid, p_secret uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from players where id = p_id and secret = p_secret;
+  if not found then raise exception 'unknown_player'; end if;
+end $$;
+
 -- Shows or hides the Premium crown.
 create or replace function public.set_premium(p_id uuid, p_secret uuid, p_on boolean)
 returns void language plpgsql security definer set search_path = public as $$
@@ -145,6 +164,8 @@ revoke all on function public.update_player(uuid, uuid, text, text) from public;
 revoke all on function public.submit_daily(uuid, uuid, int, int) from public;
 revoke all on function public.leaderboard(text, text, int, uuid) from public;
 revoke all on function public.set_premium(uuid, uuid, boolean) from public;
+revoke all on function public.delete_player(uuid, uuid) from public;
+grant execute on function public.delete_player(uuid, uuid) to anon, authenticated;
 grant execute on function public.set_premium(uuid, uuid, boolean) to anon, authenticated;
 grant execute on function public.register_player(text, text) to anon, authenticated;
 grant execute on function public.update_player(uuid, uuid, text, text) to anon, authenticated;

@@ -62,6 +62,11 @@ object Scoreboard {
             .put("p_day", day).put("p_score", score))
     }
 
+    /** Deletes the player's scoreboard profile and all their scores. */
+    suspend fun delete(p: Player) {
+        rpc("delete_player", JSONObject().put("p_id", p.id).put("p_secret", p.secret))
+    }
+
     /** Shows the 👑 crown next to the player's name on the scoreboard. */
     suspend fun setPremium(p: Player, on: Boolean) {
         rpc("set_premium", JSONObject().put("p_id", p.id).put("p_secret", p.secret).put("p_on", on))
@@ -120,6 +125,7 @@ object Scoreboard {
         return when (msg) {
             "name_taken" -> "That username is taken. Try another one."
             "bad_name" -> "Use 3–16 letters, numbers, spaces, _ . -"
+            "rude_name" -> "Please choose a different username."
             "bad_state" -> "Please pick your state."
             "unknown_player" -> "Your scoreboard profile wasn't found."
             "bad_day", "bad_score" -> "That score couldn't be saved."

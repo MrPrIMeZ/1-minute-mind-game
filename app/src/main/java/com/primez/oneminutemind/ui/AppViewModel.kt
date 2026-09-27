@@ -143,6 +143,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Deletes the scoreboard profile (name, state and all scores). Game progress on the phone stays. */
+    fun deleteProfile(done: (String?) -> Unit) {
+        val player = progress.player ?: return done(null)
+        viewModelScope.launch {
+            try {
+                Scoreboard.delete(player)
+                save(progress.copy(player = null, lastSubmittedDay = 0, lastSubmittedScore = 0))
+                toast = "Your scoreboard profile was deleted."
+                done(null)
+            } catch (e: ScoreboardException) {
+                // Already gone on the server: forget it on the phone too.
+                if (e.message == "Your scoreboard profile wasn't found.") {
+                    save(progress.copy(player = null)); done(null)
+                } else done(e.message)
+            }
+        }
+    }
+
     /** Sign up with a username and state. [done] gets an error message, or null on success. */
     fun signUp(name: String, state: String, done: (String?) -> Unit) {
         viewModelScope.launch {

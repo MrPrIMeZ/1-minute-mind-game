@@ -46,6 +46,10 @@ jobs:
             --prerelease --title "Test build ${{ github.run_number }}" \
             --notes "Latest test APK (test ads). Download 1-minute-mind-test.apk on your phone and install it."
 
+      - name: Check the Play Store build compiles (unsigned, R8 shrinking on)
+        if: env.KEYSTORE_BASE64 == ''
+        run: ./gradlew bundleRelease --no-daemon --stacktrace
+
       - name: Build Play Store bundle (AAB)
         if: env.KEYSTORE_BASE64 != ''
         env:

@@ -321,6 +321,9 @@ fun SettingsScreen(vm: AppViewModel) {
                         LinkRow("🛡️  Ad privacy choices", "") { context.findActivity()?.let { Ads.showPrivacyOptions(it) } }
                     }
                     LinkRow("🗑️  Reset progress", "") { confirmReset = true }
+                    if (vm.progress.player != null) {
+                        LinkRow("👤  Scoreboard profile (edit or delete)", "") { vm.go(Screen.Board) }
+                    }
                 }
             }
             Gap(20.dp)

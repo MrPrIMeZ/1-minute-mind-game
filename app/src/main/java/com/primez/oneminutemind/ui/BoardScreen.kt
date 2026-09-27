@@ -257,6 +257,23 @@ fun SignUpDialog(vm: AppViewModel, onClose: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) confirmDelete = false },
+            title = { Text("Delete your scoreboard profile?") },
+            text = { Text("Your username, state and all your scoreboard scores will be deleted for good. Your levels and progress in the game stay on this phone.") },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    vm.deleteProfile { err -> busy = false; if (err == null) onClose() else { error = err; confirmDelete = false } }
+                }) { Text(if (busy) "Deleting…" else "Delete", color = Brand.bad) }
+            },
+            dismissButton = { TextButton(enabled = !busy, onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
+        return
+    }
 
     AlertDialog(
         onDismissRequest = { if (!busy) onClose() },
@@ -282,6 +299,12 @@ fun SignUpDialog(vm: AppViewModel, onClose: () -> Unit) {
                 error?.let { Gap(8.dp); Text(it, color = Brand.bad, style = MaterialTheme.typography.bodySmall) }
                 Gap(8.dp)
                 Text("Your username and state are shown on the public scoreboard.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (existing != null) {
+                    Gap(4.dp)
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text("Delete my scoreboard profile", color = Brand.bad)
+                    }
+                }
             }
         },
         confirmButton = {
