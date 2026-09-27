@@ -72,7 +72,7 @@ object ShareCard {
         }
 
         var y = 150f
-        c.drawText("🧠 1 Minute Mind Game", W / 2f, y, text(58f))
+        c.drawText("🧠 1 MINUTE MIND", W / 2f, y, text(58f).apply { letterSpacing = 0.06f })
         if (premium) {
             y += 100f
             val ribbon = RectF(W / 2f - 300f, y - 70f, W / 2f + 300f, y + 26f)

@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Stopwatch with a "1": the 1 Minute Mind logo. 108dp adaptive-icon canvas. -->
+<!-- 1 Minute Mind logo: thin stopwatch ring, line-art brain, gold "1 minute" arc. 108dp adaptive canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- crown -->
-    <path android:fillColor="#FFFFFF" android:pathData="M49,29h10v5h-10z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M52,33h4v5h-4z" />
-    <!-- side button -->
-    <path android:fillColor="#FFFFFF" android:pathData="M71.5,37.5l3,-3l4,4l-3,3z" />
-    <!-- dial -->
-    <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="5"
-        android:pathData="M32,60a22,22 0,1 0,44 0a22,22 0,1 0,-44 0" />
-    <!-- the "1" -->
-    <path android:fillColor="#FFC857"
-        android:pathData="M49,53.5l7,-5h4v21h4v4h-14v-4h5v-14.5l-4,2.6z" />
+    <group>
+        <!-- crown and side button -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round"
+            android:pathData="M50.5,26.5H57.5M54,26.5V31M71.5,36.5L74.5,33.5" />
+        <!-- thin dial -->
+        <path android:strokeColor="#FFFFFF" android:strokeAlpha="0.55" android:strokeWidth="2.2"
+            android:pathData="M30,56a24,24 0,1 0,48 0a24,24 0,1 0,-48 0" />
+        <!-- brain -->
+        <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M54,43C50,40 44,41 43,46C39,47 38,53 41,56C38,59 40,65 45,65C47,68 52,68 54,66M54,43C58,40 64,41 65,46C69,47 70,53 67,56C70,59 68,65 63,65C61,68 56,68 54,66M54,43V66M46.5,50C48.5,50 49.5,52 49.5,54M45.5,59.5C47.5,58.5 49.5,59.5 50,61.5M61.5,50C59.5,50 58.5,52 58.5,54M62.5,59.5C60.5,58.5 58.5,59.5 58,61.5" />
+        <!-- gold arc: one minute -->
+        <path android:strokeColor="#FFC857" android:strokeWidth="2.8" android:strokeLineCap="round"
+            android:pathData="M54,32A24,24 0,0 1,78 56" />
+        <path android:fillColor="#FFC857" android:pathData="M75.8,56a2.2,2.2 0,1 0,4.4 0a2.2,2.2 0,1 0,-4.4 0" />
+    </group>
 </vector>

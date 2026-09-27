@@ -71,8 +71,10 @@ fun HomeScreen(vm: AppViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "1 Minute Mind" + if (p.premium) " 👑" else "",
-                            style = MaterialTheme.typography.headlineMedium,
+                            "🧠 1 MINUTE MIND" + if (p.premium) " 👑" else "",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp,
                         )
                         Text(
                             "Level ${p.level.level} · ${p.level.title}",

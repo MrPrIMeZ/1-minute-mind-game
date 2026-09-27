@@ -72,9 +72,10 @@ fun OnboardingScreen(vm: AppViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("🧠", fontSize = 72.sp)
+        AppLogo(120.dp)
+        Gap(8.dp)
         Gap(12.dp)
-        Text("1 Minute Mind Game", style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
+        Text("1 MINUTE MIND", style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center, letterSpacing = 1.sp)
         Gap(8.dp)
         Text(
             "Train your brain in one minute a day.",

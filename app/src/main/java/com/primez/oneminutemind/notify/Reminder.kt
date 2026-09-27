@@ -76,7 +76,7 @@ object Reminder {
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_notify)
-            .setContentTitle("1 Minute Mind Game")
+            .setContentTitle("🧠 1 Minute Mind")
             .setContentText(text)
             .setContentIntent(pending)
             .setAutoCancel(true)

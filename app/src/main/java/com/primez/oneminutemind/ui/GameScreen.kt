@@ -349,7 +349,7 @@ private fun OptionButton(text: String, size: androidx.compose.ui.unit.TextUnit, 
     Box(
         modifier.clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
+            .border(0.75.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -441,7 +441,7 @@ private fun RushView(r: RushRound, color: Color, onTap: () -> Unit, onMistake: (
             Box(
                 m.clip(RoundedCornerShape(14.dp))
                     .background(if (done) color.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surface)
-                    .border(1.5.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+                    .border(0.75.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
                     .clickable(enabled = !done && next <= total) {
                         if (n == next) {
                             onTap(); next++

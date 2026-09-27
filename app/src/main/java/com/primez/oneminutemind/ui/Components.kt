@@ -69,7 +69,7 @@ fun Card(
     val shape = RoundedCornerShape(22.dp)
     var m = modifier.clip(shape)
     m = if (brush != null) m.background(brush) else m.background(color)
-    m = m.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), shape)
+    m = m.border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f), shape)
     if (onClick != null) m = m.clickable(onClick = onClick)
     Box(m.padding(padding)) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) { content() }
@@ -155,3 +155,20 @@ fun Gap(h: Dp = 12.dp) = Spacer(Modifier.height(h))
 fun HGap(w: Dp = 12.dp) = Spacer(Modifier.width(w))
 
 val SpacedRow = Arrangement.spacedBy(12.dp)
+
+/** The app logo: gradient card with the thin-line brain stopwatch (same art as the app icon). */
+@Composable
+fun AppLogo(size: Dp = 120.dp) {
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(size * 0.24f))
+            .background(Brush.linearGradient(listOf(Color(0xFF6D4AFF), Color(0xFFA63CF0), Color(0xFFFF6B9A))))
+            .border(0.5.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(size * 0.24f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(com.primez.oneminutemind.R.drawable.ic_launcher_foreground),
+            contentDescription = "1 Minute Mind",
+            modifier = Modifier.size(size * 1.35f),
+        )
+    }
+}

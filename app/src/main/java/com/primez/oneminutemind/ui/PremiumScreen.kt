@@ -65,7 +65,7 @@ fun PremiumScreen(vm: AppViewModel) {
             ) {
                 AnimatedCrown(84)
                 Gap()
-                Text("1 Minute Mind Premium", style = MaterialTheme.typography.headlineMedium, color = Brand.gold, textAlign = TextAlign.Center)
+                Text("1 MINUTE MIND Premium", style = MaterialTheme.typography.headlineMedium, color = Brand.gold, textAlign = TextAlign.Center)
                 Text(
                     if (p.premium) "You're a Premium member. Thank you! 💛" else "One payment. Yours forever.",
                     color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center,
