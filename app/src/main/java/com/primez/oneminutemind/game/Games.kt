@@ -63,6 +63,9 @@ enum class GameId(
     ),
     ;
 
+    /** Turns a score into a 0–100 rating (100 = expert level). */
+    fun ratingFor(score: Int): Int = (score * 100 / expertScore).coerceIn(0, 100)
+
     companion object {
         fun fromName(name: String?): GameId? = entries.firstOrNull { it.name == name }
     }

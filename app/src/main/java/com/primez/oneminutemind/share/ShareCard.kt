@@ -80,7 +80,7 @@ object ShareCard {
             c.drawText("👑  PREMIUM MEMBER", W / 2f, y, text(52f, 0xFF2A1A00.toInt()))
         }
         y += 150f
-        c.drawText("MY BRAIN SCORE", W / 2f, y, text(52f, if (premium) gold else white, alpha = 230).apply { letterSpacing = 0.15f })
+        c.drawText("MY BRAIN SCORE TODAY", W / 2f, y, text(50f, if (premium) gold else white, alpha = 230).apply { letterSpacing = 0.15f })
         y += 260f
         c.drawText("${p.brainScore}", W / 2f, y, text(260f, if (premium) gold else white))
         y += 60f
@@ -89,22 +89,22 @@ object ShareCard {
         c.drawText("Level ${p.level.level} · ${p.level.title}", W / 2f, y, text(52f))
         headline?.let { y += 70f; c.drawText(it, W / 2f, y, text(46f, if (premium) gold else white)) }
 
-        // skill bars
+        // today's three ranked games
         y += 50f
-        val panel = RectF(90f, y, W - 90f, y + 520f)
+        val rows = p.todayBrain
+        val panel = RectF(90f, y, W - 90f, y + 80f + 110f * rows.size.coerceAtLeast(1))
         c.drawRoundRect(panel, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white; alpha = 38 })
         var rowY = y + 95f
-        Skill.entries.forEach { s ->
-            val v = p.skillRating(s)
-            val label = text(44f).apply { textAlign = Paint.Align.LEFT }
-            c.drawText("${s.emoji} ${s.label}", 140f, rowY, label)
-            val barL = 470f; val barR = W - 230f
+        rows.forEach { (g, v) ->
+            val label = text(40f).apply { textAlign = Paint.Align.LEFT }
+            c.drawText("${g.emoji} ${g.title}", 130f, rowY, label)
+            val barL = 590f; val barR = W - 200f
             val track = RectF(barL, rowY - 30f, barR, rowY + 2f)
             c.drawRoundRect(track, 16f, 16f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white; alpha = 60 })
             val fill = RectF(barL, rowY - 30f, barL + (barR - barL) * v / 100f, rowY + 2f)
             if (v > 0) c.drawRoundRect(fill, 16f, 16f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (premium) gold else white })
             c.drawText("$v", W - 150f, rowY, text(44f))
-            rowY += 95f
+            rowY += 110f
         }
         y = panel.bottom + 90f
 
@@ -136,7 +136,7 @@ object ShareCard {
     fun share(context: Context, p: Progress, toWhatsApp: Boolean, headline: String? = null): Boolean {
         val uri = save(context, draw(p, headline))
         val text = buildString {
-            append("🧠 My Brain Score is ${p.brainScore}")
+            append("🧠 My Brain Score today is ${p.brainScore}/100")
             if (p.liveStreak > 1) append(" and I'm on a ${p.liveStreak}-day streak 🔥")
             append("! Can you beat me? Train your brain in 1 minute a day: ")
             append(playLink(context))

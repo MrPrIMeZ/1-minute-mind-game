@@ -111,18 +111,33 @@ fun StatsScreen(vm: AppViewModel) {
     Column(Modifier.fillMaxSize().navigationBarsPadding()) {
         TopBar("Your stats", onBack = { vm.back() })
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Card { TodayBrain(vm, big = true) } }
+            if (p.hasBrainToday) item { Card { ShareButtons(vm) } }
             item {
                 Card {
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Brain Score", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${p.brainScore}", fontSize = 64.sp, fontWeight = FontWeight.Black, color = Brand.violet)
-                        Text("out of 100", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Gap()
+                    Column {
+                        Text("Skill profile · all games", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Your level in each skill from all your recent games, including practice.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Gap(8.dp)
                         Skill.entries.forEach { s ->
+                            val played = p.skillPlayed(s)
                             Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text("${s.emoji} ${s.label}", Modifier.weight(0.3f))
-                                Bar(p.skillRating(s) / 100f, Brand.skill(s), Modifier.weight(0.58f))
-                                Text("${p.skillRating(s)}", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+                                if (played) {
+                                    Bar(p.skillRating(s) / 100f, Brand.skill(s), Modifier.weight(0.58f))
+                                    Text("${p.skillRating(s)}", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+                                } else {
+                                    val games = GameId.entries.filter { it.skill == s }.joinToString(" or ") { it.title }
+                                    Text(
+                                        "Not played yet · try $games",
+                                        Modifier.weight(0.7f),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
@@ -140,7 +155,6 @@ fun StatsScreen(vm: AppViewModel) {
                     }
                 }
             }
-            item { Card { ShareButtons(vm) } }
             item { DailyChart(p.dailyScores) }
             item { SectionTitle("Best scores") }
             items(GameId.entries) { g ->

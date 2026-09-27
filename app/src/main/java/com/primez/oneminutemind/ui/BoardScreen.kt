@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.primez.oneminutemind.ads.BannerAd
+import com.primez.oneminutemind.data.Daily
 import com.primez.oneminutemind.data.Days
 import com.primez.oneminutemind.online.BoardRow
 import com.primez.oneminutemind.online.IndianStates
@@ -123,6 +124,14 @@ fun BoardScreen(vm: AppViewModel) {
                         modifier = Modifier.clickable { pickState = true })
                 }
             }
+            Gap(8.dp)
+            Text(
+                if (period == Period.TODAY)
+                    "Today's ranked games: " + Daily.gamesFor(Days.today()).joinToString(" · ") { "${it.emoji} ${it.title}" }
+                else "All time: every daily challenge total added up",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Gap(8.dp)
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {

@@ -20,7 +20,7 @@ data class GameResult(
     val answered get() = correct + wrong
     val accuracy: Int get() = if (answered == 0) 0 else (correct * 100) / answered
     /** 0–100 rating used for the skill chart. */
-    val rating: Int get() = min(100, score * 100 / game.expertScore)
+    val rating: Int get() = game.ratingFor(score)
 }
 
 /**

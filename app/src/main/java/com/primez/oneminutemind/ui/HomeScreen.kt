@@ -211,26 +211,61 @@ private fun GhostOnColor(text: String, enabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun BrainCard(vm: AppViewModel) {
-    val p = vm.progress
     Card(onClick = { vm.go(Screen.Stats) }) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("BRAIN SCORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${p.brainScore}", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
-                }
-                Text("See stats ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            TodayBrain(vm, big = false)
+            if (vm.progress.hasBrainToday) {
+                Gap(12.dp)
+                ShareButtons(vm)
             }
-            Gap(8.dp)
-            Skill.entries.forEach { s ->
-                Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${s.emoji} ${s.label}", Modifier.weight(0.34f), style = MaterialTheme.typography.bodyMedium)
-                    Bar(p.skillRating(s) / 100f, Brand.skill(s), Modifier.weight(0.56f), height = 8.dp)
-                    Text("${p.skillRating(s)}", Modifier.weight(0.1f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/**
+ * Today's Brain Score (0–100): the three ranked daily games and how well each went.
+ * Before today's challenge is finished it explains how to get it.
+ */
+@Composable
+fun TodayBrain(vm: AppViewModel, big: Boolean) {
+    val p = vm.progress
+    val today = p.todayBrain
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("TODAY'S BRAIN SCORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        if (today.isEmpty()) "–" else "${p.brainScore}",
+                        fontSize = if (big) 64.sp else 44.sp, fontWeight = FontWeight.Black, color = Brand.violet,
+                    )
+                    Text(" / 100", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = if (big) 12.dp else 8.dp))
                 }
             }
-            Gap(12.dp)
-            ShareButtons(vm)
+            if (!big) Text("See stats ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+        Gap(6.dp)
+        if (today.isEmpty()) {
+            Text(
+                "Finish today's daily challenge to get your Brain Score. It's worked out from today's 3 ranked games, so it changes every day.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!p.playedDailyToday) {
+                Gap(10.dp)
+                BigButton(if (p.todayDailyScores.isEmpty()) "Play today's challenge" else "Continue today's challenge", onClick = vm::startDaily)
+            }
+        } else {
+            today.forEach { (g, rating) ->
+                Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("${g.emoji} ${g.title}", Modifier.weight(0.42f), style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                    Bar(rating / 100f, Brand.skill(g.skill), Modifier.weight(0.46f), height = 8.dp)
+                    Text("$rating", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+                }
+            }
+            Text(
+                "New games tomorrow, new Brain Score.",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

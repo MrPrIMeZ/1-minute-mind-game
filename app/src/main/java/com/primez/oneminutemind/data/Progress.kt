@@ -86,7 +86,28 @@ data class Progress(
     /** Position (0–6) in the 7-day reward calendar of the last claimed reward. */
     val openRewardIndex: Int = -1,
     val lastShareRewardDay: Int = 0,
+    /** Today's ranked result that counts (the better try for Premium): games and their scores. */
+    val dailyBestDay: Int = 0,
+    val dailyBestGames: List<GameId> = emptyList(),
+    val dailyBestScores: List<Int> = emptyList(),
 ) {
+    /** Today's three ranked games with their 0–100 ratings, or empty if today's challenge isn't finished. */
+    val todayBrain: List<Pair<GameId, Int>>
+        get() {
+            val today = Days.today()
+            val (games, scores) = when {
+                dailyBestDay == today -> dailyBestGames to dailyBestScores
+                // finished today on an older app version that didn't save the best try yet
+                lastDailyDay == today && dailyProgressDay == today && dailyAttempt == 0 &&
+                    dailyProgressScores.size == Daily.GAMES -> Daily.gamesFor(today) to dailyProgressScores
+                else -> return emptyList()
+            }
+            if (games.size != scores.size) return emptyList()
+            return games.zip(scores).map { (g, s) -> g to g.ratingFor(s) }
+        }
+
+    val hasBrainToday: Boolean get() = todayBrain.isNotEmpty()
+
     /** Which try of today's challenge is current (0 if none started today). */
     val currentAttempt: Int
         get() = if (dailyProgressDay == Days.today()) dailyAttempt else 0
@@ -147,8 +168,14 @@ data class Progress(
         return if (ratings.isEmpty()) 0 else ratings.average().toInt()
     }
 
-    /** 0–100: the average of the five skill ratings. */
-    val brainScore: Int get() = Skill.entries.sumOf { skillRating(it) } / Skill.entries.size
+    /**
+     * 0–100 Brain Score: how well today's three ranked daily games went (average of their ratings).
+     * It changes every day with the daily challenge. 0 until today's challenge is finished.
+     */
+    val brainScore: Int get() = todayBrain.takeIf { it.isNotEmpty() }?.let { l -> l.sumOf { it.second } / l.size } ?: 0
+
+    /** Whether any game of this skill has been played yet (for the all-games skill profile). */
+    fun skillPlayed(skill: Skill): Boolean = GameId.entries.any { it.skill == skill && !recentRatings[it].isNullOrEmpty() }
 
     fun bestDaily(): Int = dailyScores.values.maxOrNull() ?: 0
 }
@@ -295,8 +322,11 @@ object Rules {
         if (attempt == 0 && p.lastDailyDay == today) return p
         val done = (if (p.dailyProgressDay == today) p.dailyProgressScores else emptyList()) + score
         if (done.size > Daily.GAMES) return p
-        val next = p.copy(dailyProgressDay = today, dailyProgressScores = done, dailyAttempt = attempt)
+        var next = p.copy(dailyProgressDay = today, dailyProgressScores = done, dailyAttempt = attempt)
         if (done.size < Daily.GAMES) return next
+        val games = Daily.gamesFor(today, attempt)
+        val beatsBest = next.dailyBestDay != today || done.sum() > next.dailyBestScores.sum()
+        next = if (beatsBest) next.copy(dailyBestDay = today, dailyBestGames = games, dailyBestScores = done) else next
         return if (attempt == 0) {
             completeDaily(next, done.sum(), today)
         } else {

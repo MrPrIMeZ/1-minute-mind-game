@@ -51,6 +51,9 @@ class Store(context: Context) {
         put("lastOpenRewardDay", p.lastOpenRewardDay)
         put("openRewardIndex", p.openRewardIndex)
         put("lastShareRewardDay", p.lastShareRewardDay)
+        put("dailyBestDay", p.dailyBestDay)
+        put("dailyBestGames", JSONArray(p.dailyBestGames.map { it.name }))
+        put("dailyBestScores", JSONArray(p.dailyBestScores))
         p.player?.let { pl ->
             put("player", JSONObject().apply {
                 put("id", pl.id); put("secret", pl.secret); put("name", pl.name); put("state", pl.state)
@@ -114,6 +117,11 @@ class Store(context: Context) {
             lastOpenRewardDay = o.optInt("lastOpenRewardDay"),
             openRewardIndex = o.optInt("openRewardIndex", -1),
             lastShareRewardDay = o.optInt("lastShareRewardDay"),
+            dailyBestDay = o.optInt("dailyBestDay"),
+            dailyBestGames = o.optJSONArray("dailyBestGames")?.let { a ->
+                List(a.length()) { GameId.fromName(a.optString(it)) }.filterNotNull()
+            } ?: emptyList(),
+            dailyBestScores = o.optJSONArray("dailyBestScores")?.let { a -> List(a.length()) { a.optInt(it) } } ?: emptyList(),
             settings = Settings(
                 theme = AppTheme.fromName(s.optString("theme", "")),
                 sound = s.optBoolean("sound", d.sound),
