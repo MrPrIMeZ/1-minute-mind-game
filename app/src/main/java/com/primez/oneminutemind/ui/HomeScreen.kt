@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.primez.oneminutemind.ads.Ads
 import com.primez.oneminutemind.ads.BannerAd
 import com.primez.oneminutemind.ads.findActivity
+import com.primez.oneminutemind.data.Daily
 import com.primez.oneminutemind.data.Days
 import com.primez.oneminutemind.game.GameId
 import com.primez.oneminutemind.game.Skill
@@ -245,23 +246,30 @@ fun TodayBrain(vm: AppViewModel, big: Boolean) {
             if (!big) Text("See stats ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
         Gap(6.dp)
+        // Skills of today's ranked games (they rotate every day). Filled in once today's challenge is done.
+        val rows: List<Pair<GameId, Int?>> =
+            if (today.isNotEmpty()) today else Daily.gamesFor(Days.today()).map { it to null }
+        rows.forEach { (g, rating) ->
+            Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(0.4f)) {
+                    Text("${g.skill.emoji} ${g.skill.label}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(g.title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
+                Bar((rating ?: 0) / 100f, Brand.skill(g.skill), Modifier.weight(0.48f), height = 8.dp)
+                Text(rating?.toString() ?: "–", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+        Gap(4.dp)
         if (today.isEmpty()) {
             Text(
-                "Finish today's daily challenge to get your Brain Score. It's worked out from today's 3 ranked games, so it changes every day.",
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                "Play today's challenge to get your Brain Score. The skills change every day with the ranked games.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (!p.playedDailyToday) {
                 Gap(10.dp)
                 BigButton(if (p.todayDailyScores.isEmpty()) "Play today's challenge" else "Continue today's challenge", onClick = vm::startDaily)
             }
         } else {
-            today.forEach { (g, rating) ->
-                Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("${g.emoji} ${g.title}", Modifier.weight(0.42f), style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                    Bar(rating / 100f, Brand.skill(g.skill), Modifier.weight(0.46f), height = 8.dp)
-                    Text("$rating", Modifier.weight(0.12f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
-                }
-            }
             Text(
                 "New games tomorrow, new Brain Score.",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
