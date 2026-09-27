@@ -17,7 +17,10 @@ import com.primez.oneminutemind.data.Store
 import com.primez.oneminutemind.data.xpFor
 import com.primez.oneminutemind.game.GameId
 import com.primez.oneminutemind.game.GameResult
+import com.primez.oneminutemind.ads.Ads
+import com.primez.oneminutemind.billing.Billing
 import com.primez.oneminutemind.notify.Reminder
+import com.primez.oneminutemind.share.ShareCard
 import com.primez.oneminutemind.online.Scoreboard
 import com.primez.oneminutemind.online.ScoreboardException
 import kotlinx.coroutines.launch
@@ -31,6 +34,7 @@ sealed interface Screen {
     data object Awards : Screen
     data object Settings : Screen
     data object Board : Screen
+    data object Premium : Screen
     /** [key] makes every new game a fresh screen, even for the same game twice. */
     data class Play(val game: GameId, val mode: Mode, val seed: Long, val key: Long) : Screen
     data class Result(val info: ResultInfo) : Screen
@@ -67,9 +71,56 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private var submitting = false
 
+    /** Short message shown at the bottom of the screen (e.g. "+50 XP for sharing!"). */
+    var toast by mutableStateOf<String?>(null)
+
     init {
         applySettings(progress.settings, reschedule = true)
+        Ads.premium = progress.premium
+        Billing.onPremium = { on -> if (on && !progress.premium) setPremium(true) }
+        Billing.start(app)
         submitPendingScore()
+        syncPremiumToScoreboard()
+    }
+
+    // ---------- premium & rewards ----------
+
+    /** Turns Premium on/off on this phone (and on the scoreboard, for the crown). */
+    fun setPremium(on: Boolean) {
+        save(progress.copy(premium = on))
+        Ads.premium = on
+        if (on) toast = "👑 Welcome to Premium!"
+        syncPremiumToScoreboard()
+    }
+
+    private fun syncPremiumToScoreboard() {
+        val player = progress.player ?: return
+        if (!Scoreboard.configured) return
+        val on = progress.premium
+        viewModelScope.launch {
+            try { Scoreboard.setPremium(player, on) } catch (_: ScoreboardException) {}
+        }
+    }
+
+    /** Daily-open reward. Returns (xp, gotShield) or null if already claimed today. */
+    fun claimOpenReward(): Pair<Int, Boolean>? {
+        if (!progress.openRewardAvailable) return null
+        val (p, xp, shield) = Rules.claimOpenReward(progress)
+        save(Rules.unlock(p, Achievements.check(p, null)))
+        return xp to shield
+    }
+
+    /** Opens WhatsApp or the share menu with the Brain Score picture; gives the daily share reward. */
+    fun share(context: android.content.Context, toWhatsApp: Boolean, headline: String? = null) {
+        if (!ShareCard.share(context, progress, toWhatsApp, headline)) {
+            toast = "Couldn't open sharing on this phone."
+            return
+        }
+        val (p, xp) = Rules.claimShareReward(progress)
+        if (xp > 0) {
+            save(p)
+            toast = "🎁 +$xp XP for sharing! Come back tomorrow for more."
+        }
     }
 
     // ---------- scoreboard ----------
@@ -84,7 +135,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 Scoreboard.submit(player, day, total)
-                save(progress.copy(lastSubmittedDay = day))
+                save(progress.copy(lastSubmittedDay = day, lastSubmittedScore = total))
             } catch (_: ScoreboardException) {
             } finally {
                 submitting = false
@@ -105,6 +156,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 save(progress.copy(player = player))
                 submitPendingScore()
+                syncPremiumToScoreboard()
                 done(null)
             } catch (e: ScoreboardException) {
                 done(e.message)
@@ -132,16 +184,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- playing ----------
 
-    val todaysGames: List<GameId> get() = Daily.gamesFor(Days.today())
+    /** Games of the current try of today's challenge (retries use a different set). */
+    val todaysGames: List<GameId> get() = Daily.gamesFor(Days.today(), progress.currentAttempt)
 
     /** Index of the next daily game to play today (0..2), or 3 when all are done. */
     val nextDailyIndex: Int get() = progress.todayDailyScores.size
 
-    /** Starts (or continues) today's challenge at the first game not yet played. */
+    /** Starts (or continues) today's challenge, or a started Premium retry, at the next game. */
     fun startDaily() {
+        val p = progress
         val i = nextDailyIndex
-        if (progress.playedDailyToday || i >= Daily.GAMES) return
-        go(playScreen(todaysGames[i], Mode.DAILY, Daily.seedFor(Days.today(), i)))
+        val canPlay = (!p.playedDailyToday || p.retryInProgress) && i < Daily.GAMES
+        if (!canPlay) return
+        go(playScreen(todaysGames[i], Mode.DAILY, Daily.seedFor(Days.today(), i, p.currentAttempt)))
+    }
+
+    /** Premium: play today's challenge again with 3 different games. The best total counts. */
+    fun startRetry() {
+        if (!progress.premium) { go(Screen.Premium); return }
+        val p = Rules.startRetry(progress)
+        if (p == progress) return
+        save(p)
+        startDaily()
     }
 
     fun startPractice(game: GameId) {
@@ -224,7 +288,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun resetProgress() {
         val keep = progress.settings
         store.clear()
-        save(Progress(onboarded = true, settings = keep, player = progress.player))
+        save(Progress(onboarded = true, settings = keep, player = progress.player, premium = progress.premium))
         home()
     }
 

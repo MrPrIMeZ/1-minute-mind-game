@@ -150,7 +150,7 @@ fun GameScreen(vm: AppViewModel, play: Screen.Play) {
     // Time up: practice players may watch an ad for +15 s once, otherwise go to results.
     LaunchedEffect(phase) {
         if (phase == Phase.TIME_UP) {
-            val canContinue = play.mode == Mode.PRACTICE && !usedContinue && Ads.rewardedReady
+            val canContinue = play.mode == Mode.PRACTICE && !usedContinue && Ads.canReward
             if (!canContinue) { delay(900); finish() }
         }
     }
@@ -228,7 +228,7 @@ fun GameScreen(vm: AppViewModel, play: Screen.Play) {
                     }
                     Phase.TIME_UP, Phase.DONE -> TimeUp(
                         score = session.score,
-                        offerContinue = phase == Phase.TIME_UP && play.mode == Mode.PRACTICE && !usedContinue && Ads.rewardedReady,
+                        offerContinue = phase == Phase.TIME_UP && play.mode == Mode.PRACTICE && !usedContinue && Ads.canReward,
                         onContinue = {
                             Ads.showRewarded(activity, onClosed = {
                                 if (phase == Phase.TIME_UP && !usedContinue) finish()
@@ -280,7 +280,7 @@ private fun Intro(vm: AppViewModel, play: Screen.Play, onStart: () -> Unit) {
         if (best > 0) { Gap(10.dp); Text("Your best: $best", fontWeight = FontWeight.Bold, color = Brand.gold) }
         if (play.mode == Mode.DAILY) {
             Gap(10.dp)
-            Pill("One try only · counts for the scoreboard", Brand.coral)
+            Pill(if (vm.progress.premium) "Ranked · your best try counts" else "One try only · counts for the scoreboard", Brand.coral)
         }
         Gap(28.dp)
         BigButton("Start", onClick = onStart, color = Brand.skill(g.skill))
@@ -296,7 +296,7 @@ private fun TimeUp(score: Int, offerContinue: Boolean, onContinue: () -> Unit, o
         Text("Score $score", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (offerContinue) {
             Gap(28.dp)
-            BigButton("🎬  Watch an ad: +15 seconds", onClick = onContinue, color = Brand.coral)
+            BigButton(Ads.rewardLabel("+15 seconds"), onClick = onContinue, color = Brand.coral)
             Gap(10.dp)
             GhostButton("See results", onClick = onResults)
         }

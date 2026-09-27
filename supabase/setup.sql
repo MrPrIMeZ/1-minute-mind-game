@@ -18,6 +18,8 @@ create table if not exists public.players (
   created_at timestamptz not null default now()
 );
 create unique index if not exists players_name_unique on public.players (lower(name));
+-- Premium members get a crown on the scoreboard.
+alter table public.players add column if not exists premium boolean not null default false;
 
 create table if not exists public.daily_scores (
   player_id  uuid not null references public.players(id) on delete cascade,
@@ -90,7 +92,8 @@ begin
   if not found then raise exception 'unknown_player'; end if;
 end $$;
 
--- Save one day's daily-challenge total (only once per day, only for today/yesterday).
+-- Save a day's daily-challenge total (only for today/yesterday). If it's sent again
+-- (Premium retry), the best total of the day is kept.
 create or replace function public.submit_daily(p_id uuid, p_secret uuid, p_day int, p_score int)
 returns void language plpgsql security definer set search_path = public as $$
 declare
@@ -104,24 +107,33 @@ begin
   if p_day not in (yday, today, tmrw) then raise exception 'bad_day'; end if;
   if p_score < 0 or p_score > 9000 then raise exception 'bad_score'; end if;
   insert into daily_scores(player_id, day, score) values (p_id, p_day, p_score)
-  on conflict (player_id, day) do nothing;
+  on conflict (player_id, day) do update set score = greatest(daily_scores.score, excluded.score);
+end $$;
+
+-- Shows or hides the Premium crown.
+create or replace function public.set_premium(p_id uuid, p_secret uuid, p_on boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update players set premium = p_on where id = p_id and secret = p_secret;
+  if not found then raise exception 'unknown_player'; end if;
 end $$;
 
 -- Leaderboard. p_period: 'today' (uses p_day) or 'all' (sum of all daily scores).
 -- p_state: null for All India, or a state name. Returns the top 100 plus your own row.
+drop function if exists public.leaderboard(text, text, int, uuid);
 create or replace function public.leaderboard(p_period text, p_state text, p_day int, p_player uuid)
-returns table(rank bigint, player_name text, player_state text, score bigint, is_me boolean)
+returns table(rank bigint, player_name text, player_state text, score bigint, is_me boolean, is_premium boolean)
 language sql stable security definer set search_path = public as $$
   with totals as (
-    select p.id, p.name, p.state, sum(d.score)::bigint as total
+    select p.id, p.name, p.state, p.premium, sum(d.score)::bigint as total
     from daily_scores d join players p on p.id = d.player_id
     where (p_period = 'all' or d.day = p_day)
       and (p_state is null or p.state = p_state)
-    group by p.id, p.name, p.state
+    group by p.id, p.name, p.state, p.premium
   ), ranked as (
     select t.*, rank() over (order by t.total desc) as r from totals t
   )
-  select r, name, state, total, (id = p_player)
+  select r, name, state, total, coalesce(id = p_player, false), premium
   from ranked
   where r <= 100 or id = p_player
   order by r, name
@@ -132,6 +144,8 @@ revoke all on function public.register_player(text, text) from public;
 revoke all on function public.update_player(uuid, uuid, text, text) from public;
 revoke all on function public.submit_daily(uuid, uuid, int, int) from public;
 revoke all on function public.leaderboard(text, text, int, uuid) from public;
+revoke all on function public.set_premium(uuid, uuid, boolean) from public;
+grant execute on function public.set_premium(uuid, uuid, boolean) to anon, authenticated;
 grant execute on function public.register_player(text, text) to anon, authenticated;
 grant execute on function public.update_player(uuid, uuid, text, text) to anon, authenticated;
 grant execute on function public.submit_daily(uuid, uuid, int, int) to anon, authenticated;

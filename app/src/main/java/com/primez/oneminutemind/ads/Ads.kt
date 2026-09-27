@@ -53,6 +53,15 @@ object Ads {
     var privacyOptionsRequired by mutableStateOf(false)
         private set
 
+    /** Premium: no banners or interstitials, and rewards don't need an ad. */
+    var premium by mutableStateOf(false)
+
+    /** Whether a reward button can be offered right now. */
+    val canReward: Boolean get() = premium || rewardedReady
+
+    /** Button text for a reward: "🎬 Watch an ad: +15 seconds" or "👑 +15 seconds (Premium)". */
+    fun rewardLabel(what: String) = if (premium) "👑  $what (free with Premium)" else "🎬  Watch an ad: $what"
+
     private var interstitial: InterstitialAd? = null
     private var rewarded: RewardedAd? = null
     private var practiceGamesSinceAd = 0
@@ -124,6 +133,7 @@ object Ads {
      * straight away if no ad is shown or after the ad is closed.
      */
     fun maybeShowInterstitial(activity: Activity?, then: () -> Unit) {
+        if (premium) { then(); return }
         practiceGamesSinceAd++
         val ad = interstitial
         val now = SystemClock.elapsedRealtime()
@@ -145,6 +155,7 @@ object Ads {
 
     /** Shows a rewarded ad. [onReward] runs only if the player watched it to the end. */
     fun showRewarded(activity: Activity?, onClosed: () -> Unit = {}, onReward: () -> Unit) {
+        if (premium) { onReward(); onClosed(); return }
         val ad = rewarded
         if (activity == null || ad == null) { onClosed(); return }
         var earned = false
@@ -165,7 +176,7 @@ object Ads {
 /** Adaptive banner that fills the screen width. Shows nothing until ads are ready. */
 @Composable
 fun BannerAd(modifier: Modifier = Modifier) {
-    if (!Ads.ready) return
+    if (!Ads.ready || Ads.premium) return
     val width = LocalConfiguration.current.screenWidthDp
     AndroidView(
         modifier = modifier.fillMaxWidth().wrapContentHeight(),

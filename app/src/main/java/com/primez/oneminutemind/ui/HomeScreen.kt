@@ -5,6 +5,16 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import com.primez.oneminutemind.data.Rewards
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +57,8 @@ import com.primez.oneminutemind.game.Skill
 fun HomeScreen(vm: AppViewModel) {
     val p = vm.progress
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().navigationBarsPadding()) {
+    var showReward by remember { mutableStateOf(p.openRewardAvailable) }
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -56,9 +67,12 @@ fun HomeScreen(vm: AppViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(span = { GridItemSpan(2) }) {
-                Row(Modifier.statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("1 Minute Mind", style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            "1 Minute Mind" + if (p.premium) " 👑" else "",
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
                         Text(
                             "Level ${p.level.level} · ${p.level.title}",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -88,11 +102,14 @@ fun HomeScreen(vm: AppViewModel) {
             }) }
             item(span = { GridItemSpan(2) }) { BoardCard(vm) }
             item(span = { GridItemSpan(2) }) { BrainCard(vm) }
+            if (!p.premium) item(span = { GridItemSpan(2) }) { PremiumCard(vm) }
             item(span = { GridItemSpan(2) }) { SectionTitle("Practice · pick any game") }
             items(GameId.entries) { g -> GameTile(g, p.bestScores[g] ?: 0) { vm.startPractice(g) } }
         }
+        ToastHost(vm)
         BannerAd()
     }
+    if (showReward && p.openRewardAvailable) DailyRewardDialog(vm) { showReward = false }
 }
 
 @Composable
@@ -104,7 +121,7 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
     val scale by pulse.animateFloat(1f, 1.15f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "s")
     Card(
         brush = Brush.linearGradient(listOf(Color(0xFF6D4AFF), Color(0xFFB144FF), Color(0xFFFF6B8A))),
-        onClick = if (done) null else vm::startDaily,
+        onClick = if (done && !p.retryInProgress) null else vm::startDaily,
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -112,6 +129,7 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                     Text("DAILY CHALLENGE", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
                     Text(
                         when {
+                            p.retryInProgress -> "Retry ${p.currentAttempt} · ${p.todayDailyScores.size} of 3 done"
                             done -> "Completed today ✓"
                             p.todayDailyScores.isNotEmpty() -> "${p.todayDailyScores.size} of 3 done"
                             else -> "3 games · 3 minutes"
@@ -122,6 +140,7 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("🔥", fontSize = 30.sp, modifier = Modifier.scale(if (p.liveStreak > 0 && !done) scale else 1f))
                     Text("${p.liveStreak} day${if (p.liveStreak == 1) "" else "s"}", color = Color.White, fontWeight = FontWeight.Bold)
+                    if (p.shields > 0) Text("🛡️ ${p.shields}", color = Color.White, style = MaterialTheme.typography.labelMedium)
                 }
             }
             Gap()
@@ -146,12 +165,28 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                 }
             }
             Gap()
-            if (done) {
+            if (p.retryInProgress) {
+                BigButton(
+                    "Continue retry: game ${p.todayDailyScores.size + 1} of 3",
+                    onClick = vm::startDaily, color = Color(0xFF1B1446),
+                )
+            } else if (done) {
                 val score = p.dailyScores[Days.today()] ?: 0
-                Text("Today's score: $score · come back tomorrow for new games!", color = Color.White)
+                Text(
+                    "Today's best: $score" + if (p.canStartRetry) "" else " · come back tomorrow for new games!",
+                    color = Color.White, fontWeight = FontWeight.SemiBold,
+                )
+                if (p.canStartRetry) {
+                    Gap(8.dp)
+                    GhostOnColor(
+                        if (p.premium) "👑 Retry with 3 new games (${p.retriesLeft} left) · best total counts"
+                        else "👑 Retry with new games · Premium",
+                        enabled = true, onClick = vm::startRetry,
+                    )
+                }
             } else {
                 if (p.canSaveStreak) {
-                    GhostOnColor("🎬 Save your ${p.streak}-day streak (watch an ad)", enabled = Ads.rewardedReady, onClick = onSaveStreak)
+                    GhostOnColor(Ads.rewardLabel("save your ${p.streak}-day streak"), enabled = Ads.canReward, onClick = onSaveStreak)
                     Gap(8.dp)
                 }
                 val next = p.todayDailyScores.size
@@ -193,6 +228,32 @@ private fun BrainCard(vm: AppViewModel) {
                     Bar(p.skillRating(s) / 100f, Brand.skill(s), Modifier.weight(0.56f), height = 8.dp)
                     Text("${p.skillRating(s)}", Modifier.weight(0.1f).padding(start = 8.dp), fontWeight = FontWeight.Bold)
                 }
+            }
+            Gap(12.dp)
+            ShareButtons(vm)
+        }
+    }
+}
+
+/** WhatsApp + general share of the Brain Score picture, with the daily share reward. */
+@Composable
+fun ShareButtons(vm: AppViewModel, headline: String? = null) {
+    val context = LocalContext.current
+    val p = vm.progress
+    Column {
+        Text(
+            if (p.shareRewardAvailable) "📣 Share your Brain Score · +${Rewards.SHARE_XP * (if (p.premium) 2 else 1)} XP today"
+            else "📣 Share your Brain Score (today's reward claimed)",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Gap(8.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.weight(1f)) {
+                BigButton("WhatsApp", onClick = { vm.share(context, toWhatsApp = true, headline = headline) }, color = Color(0xFF25D366))
+            }
+            Box(Modifier.weight(1f)) {
+                BigButton("More apps", onClick = { vm.share(context, toWhatsApp = false, headline = headline) })
             }
         }
     }
@@ -236,4 +297,101 @@ private fun BoardCard(vm: AppViewModel) {
             Text("›", fontSize = 26.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
+}
+
+@Composable
+private fun PremiumCard(vm: AppViewModel) {
+    Card(
+        brush = Brush.linearGradient(listOf(Color(0xFF2B1650), Color(0xFF6B3F0A))),
+        onClick = { vm.go(Screen.Premium) },
+        padding = 14.dp,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("👑", fontSize = 30.sp)
+            HGap()
+            Column(Modifier.weight(1f)) {
+                Text("Go Premium", color = Brand.gold, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "No ads · daily retries · gold share card & crown",
+                    color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Text("›", fontSize = 26.sp, color = Brand.gold, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Shows [AppViewModel.toast] for 3 seconds. */
+@Composable
+fun ToastHost(vm: AppViewModel) {
+    vm.toast?.let { msg ->
+        LaunchedEffect(msg) { kotlinx.coroutines.delay(3000); vm.toast = null }
+        Toast(msg)
+    }
+}
+
+@Composable
+fun Toast(msg: String) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Card(color = MaterialTheme.colorScheme.inverseSurface, padding = 14.dp) {
+            Text(msg, color = MaterialTheme.colorScheme.inverseOnSurface, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** 7-day calendar of daily-open rewards. Day 7 also gives a Streak Shield. */
+@Composable
+private fun DailyRewardDialog(vm: AppViewModel, onClose: () -> Unit) {
+    val p = vm.progress
+    val today = p.nextOpenRewardIndex
+    var claimed by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
+    AlertDialog(
+        onDismissRequest = { if (claimed != null) onClose() },
+        title = { Text(if (claimed == null) "🎁 Daily reward" else "🎉 Reward claimed!") },
+        text = {
+            Column {
+                Text(
+                    if (claimed == null) "Open the app every day for bigger rewards. Day 7 gives a 🛡️ Streak Shield!"
+                    else "+${claimed!!.first} XP" + if (claimed!!.second) " and a 🛡️ Streak Shield (it saves your streak if you miss a day)" else "",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Gap()
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Rewards.openXp.forEachIndexed { i, xp ->
+                        val isToday = i == today
+                        val past = i < today
+                        Column(
+                            Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    when {
+                                        isToday -> Brand.gold
+                                        past -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    },
+                                )
+                                .padding(vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("D${i + 1}", style = MaterialTheme.typography.labelSmall, color = if (isToday) Color(0xFF2A1A00) else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                when {
+                                    past -> "✓"
+                                    Rewards.givesShield(i) -> "🛡️"
+                                    else -> "🎁"
+                                },
+                                fontSize = 16.sp,
+                            )
+                            Text("${xp * (if (p.premium) 2 else 1)}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                                color = if (isToday) Color(0xFF2A1A00) else MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                if (p.premium) { Gap(8.dp); Text("👑 Premium: double rewards", color = Brand.gold, style = MaterialTheme.typography.labelMedium) }
+            }
+        },
+        confirmButton = {
+            if (claimed == null) TextButton(onClick = { claimed = vm.claimOpenReward() ?: (0 to false) }) { Text("Claim") }
+            else TextButton(onClick = onClose) { Text("Nice!") }
+        },
+    )
 }

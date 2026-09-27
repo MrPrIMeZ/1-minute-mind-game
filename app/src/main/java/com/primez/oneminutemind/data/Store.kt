@@ -44,6 +44,13 @@ class Store(context: Context) {
         put("dailyProgressDay", p.dailyProgressDay)
         put("dailyProgressScores", JSONArray(p.dailyProgressScores))
         put("lastSubmittedDay", p.lastSubmittedDay)
+        put("lastSubmittedScore", p.lastSubmittedScore)
+        put("dailyAttempt", p.dailyAttempt)
+        put("premium", p.premium)
+        put("shields", p.shields)
+        put("lastOpenRewardDay", p.lastOpenRewardDay)
+        put("openRewardIndex", p.openRewardIndex)
+        put("lastShareRewardDay", p.lastShareRewardDay)
         p.player?.let { pl ->
             put("player", JSONObject().apply {
                 put("id", pl.id); put("secret", pl.secret); put("name", pl.name); put("state", pl.state)
@@ -100,6 +107,13 @@ class Store(context: Context) {
             dailyProgressScores = dps,
             player = player,
             lastSubmittedDay = o.optInt("lastSubmittedDay"),
+            lastSubmittedScore = o.optInt("lastSubmittedScore"),
+            dailyAttempt = o.optInt("dailyAttempt"),
+            premium = o.optBoolean("premium"),
+            shields = o.optInt("shields"),
+            lastOpenRewardDay = o.optInt("lastOpenRewardDay"),
+            openRewardIndex = o.optInt("openRewardIndex", -1),
+            lastShareRewardDay = o.optInt("lastShareRewardDay"),
             settings = Settings(
                 theme = AppTheme.fromName(s.optString("theme", "")),
                 sound = s.optBoolean("sound", d.sound),

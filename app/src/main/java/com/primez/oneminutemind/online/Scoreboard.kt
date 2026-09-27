@@ -22,7 +22,9 @@ object IndianStates {
     )
 }
 
-data class BoardRow(val rank: Int, val name: String, val state: String, val score: Long, val isMe: Boolean)
+data class BoardRow(
+    val rank: Int, val name: String, val state: String, val score: Long, val isMe: Boolean, val isPremium: Boolean,
+)
 
 enum class Period(val api: String, val label: String) { TODAY("today", "Today"), ALL("all", "All time") }
 
@@ -60,6 +62,11 @@ object Scoreboard {
             .put("p_day", day).put("p_score", score))
     }
 
+    /** Shows the 👑 crown next to the player's name on the scoreboard. */
+    suspend fun setPremium(p: Player, on: Boolean) {
+        rpc("set_premium", JSONObject().put("p_id", p.id).put("p_secret", p.secret).put("p_on", on))
+    }
+
     suspend fun leaderboard(period: Period, state: String?, day: Int, playerId: String?): List<BoardRow> {
         val body = JSONObject().put("p_period", period.api).put("p_day", day)
             .put("p_state", state ?: JSONObject.NULL).put("p_player", playerId ?: JSONObject.NULL)
@@ -72,6 +79,7 @@ object Scoreboard {
                 state = o.optString("player_state"),
                 score = o.optLong("score"),
                 isMe = o.optBoolean("is_me", false),
+                isPremium = o.optBoolean("is_premium", false),
             )
         }
     }

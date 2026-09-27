@@ -121,8 +121,8 @@ fun ResultScreen(vm: AppViewModel, info: ResultInfo) {
                     }
                 }
                 Gap(20.dp)
-                if (!info.doubled && Ads.rewardedReady) {
-                    BigButton("🎬  Watch an ad: double XP", onClick = {
+                if (!info.doubled && Ads.canReward) {
+                    BigButton(Ads.rewardLabel("double XP"), onClick = {
                         Ads.showRewarded(activity) { vm.doubleXp(info) }
                     }, color = Brand.coral)
                     Gap(10.dp)
@@ -169,13 +169,7 @@ fun DailyDoneScreen(vm: AppViewModel, s: Screen.DailyDone) {
                     }
                 }
                 Gap(24.dp)
-                BigButton("Share my score", onClick = {
-                    val text = "🧠 I scored ${s.total} in today's 1 Minute Mind Game challenge " +
-                        "and I'm on a ${s.streak}-day streak! 🔥 Can you beat me?\n" +
-                        "https://play.google.com/store/apps/details?id=${context.packageName}"
-                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-                    context.startActivity(Intent.createChooser(send, "Share your score"))
-                })
+                ShareButtons(vm, headline = "Today's challenge: ${s.total} pts")
                 Gap(10.dp)
                 GhostButton("🏆  See my rank", onClick = { vm.home(); vm.go(Screen.Board) })
                 Gap(10.dp)
@@ -186,6 +180,7 @@ fun DailyDoneScreen(vm: AppViewModel, s: Screen.DailyDone) {
                     textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            ToastHost(vm)
             BannerAd()
         }
     }

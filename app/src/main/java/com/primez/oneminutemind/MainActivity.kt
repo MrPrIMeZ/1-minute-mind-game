@@ -32,6 +32,7 @@ import com.primez.oneminutemind.ui.HomeScreen
 import com.primez.oneminutemind.ui.MindTheme
 import com.primez.oneminutemind.ui.isDark
 import com.primez.oneminutemind.ui.OnboardingScreen
+import com.primez.oneminutemind.ui.PremiumScreen
 import com.primez.oneminutemind.ui.ResultScreen
 import com.primez.oneminutemind.ui.Screen
 import com.primez.oneminutemind.ui.SettingsScreen
@@ -91,6 +92,7 @@ private fun App(vm: AppViewModel) {
                 Screen.Awards -> AwardsScreen(vm)
                 Screen.Settings -> SettingsScreen(vm)
                 Screen.Board -> BoardScreen(vm)
+                Screen.Premium -> PremiumScreen(vm)
                 is Screen.Play -> GameScreen(vm, s)
                 is Screen.Result -> ResultScreen(vm, s.info)
                 is Screen.DailyDone -> DailyDoneScreen(vm, s)

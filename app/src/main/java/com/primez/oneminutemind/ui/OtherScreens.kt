@@ -140,6 +140,7 @@ fun StatsScreen(vm: AppViewModel) {
                     }
                 }
             }
+            item { Card { ShareButtons(vm) } }
             item { DailyChart(p.dailyScores) }
             item { SectionTitle("Best scores") }
             items(GameId.entries) { g ->
@@ -155,6 +156,7 @@ fun StatsScreen(vm: AppViewModel) {
                 }
             }
         }
+        ToastHost(vm)
         BannerAd()
     }
 }
@@ -245,6 +247,16 @@ fun SettingsScreen(vm: AppViewModel) {
     Column(Modifier.fillMaxSize().navigationBarsPadding()) {
         TopBar("Settings", onBack = { vm.back() })
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            SectionTitle("Premium")
+            Card(padding = 4.dp) {
+                Column {
+                    LinkRow(if (vm.progress.premium) "👑  Premium is active" else "👑  Get Premium", "") { vm.go(Screen.Premium) }
+                    if (BuildConfig.DEBUG) {
+                        // Test builds only: try Premium features before the Play Store product exists.
+                        ToggleRow("🧪  Test mode: Premium on", vm.progress.premium) { vm.setPremium(it) }
+                    }
+                }
+            }
             SectionTitle("Theme")
             ThemePicker(s.theme) { vm.updateSettings(s.copy(theme = it)) }
             SectionTitle("Game")

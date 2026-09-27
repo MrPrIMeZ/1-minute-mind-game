@@ -4,7 +4,6 @@ import com.primez.oneminutemind.game.GameId
 import com.primez.oneminutemind.game.GameResult
 import com.primez.oneminutemind.game.Skill
 import java.util.Calendar
-import kotlin.random.Random
 
 /** Days are stored as yyyymmdd ints, e.g. 20260928. */
 object Days {
@@ -19,6 +18,14 @@ object Days {
         cal.set(day / 10_000, (day / 100) % 100 - 1, day % 100)
         cal.add(Calendar.DAY_OF_MONTH, delta)
         return key(cal)
+    }
+
+    /** Days since 1 Jan 1970 for a yyyymmdd day (same number on every phone). */
+    fun epochDay(day: Int): Long {
+        val cal = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        cal.clear()
+        cal.set(day / 10_000, (day / 100) % 100 - 1, day % 100)
+        return cal.timeInMillis / 86_400_000L
     }
 }
 
@@ -67,18 +74,50 @@ data class Progress(
     val dailyProgressDay: Int = 0,
     val dailyProgressScores: List<Int> = emptyList(),
     val player: Player? = null,
-    /** Last day whose daily total was sent to the scoreboard. */
+    /** Last day whose daily total was sent to the scoreboard, and the total sent. */
     val lastSubmittedDay: Int = 0,
+    val lastSubmittedScore: Int = 0,
+    /** Which try of today's challenge [dailyProgressScores] belongs to (0 = first, 1–2 = Premium retries). */
+    val dailyAttempt: Int = 0,
+    val premium: Boolean = false,
+    /** Streak Shields: each one saves the streak for one missed day. */
+    val shields: Int = 0,
+    val lastOpenRewardDay: Int = 0,
+    /** Position (0–6) in the 7-day reward calendar of the last claimed reward. */
+    val openRewardIndex: Int = -1,
+    val lastShareRewardDay: Int = 0,
 ) {
+    /** Which try of today's challenge is current (0 if none started today). */
+    val currentAttempt: Int
+        get() = if (dailyProgressDay == Days.today()) dailyAttempt else 0
+
+    /** A Premium retry that has been started but not finished. */
+    val retryInProgress: Boolean
+        get() = playedDailyToday && currentAttempt > 0 && todayDailyScores.size < Daily.GAMES
+
+    val retriesLeft: Int get() = (Daily.MAX_RETRIES - currentAttempt).coerceAtLeast(0)
+
+    val canStartRetry: Boolean get() = playedDailyToday && !retryInProgress && retriesLeft > 0
+
+    val openRewardAvailable: Boolean get() = lastOpenRewardDay != Days.today()
+
+    /** Calendar position of the reward that can be claimed today. */
+    val nextOpenRewardIndex: Int
+        get() = if (lastOpenRewardDay == Days.offset(Days.today(), -1)) (openRewardIndex + 1) % 7 else 0
+
+    val shareRewardAvailable: Boolean get() = lastShareRewardDay != Days.today()
+
     /** Scores of today's daily games already played (0 to 3 entries). */
     val todayDailyScores: List<Int>
         get() = if (dailyProgressDay == Days.today()) dailyProgressScores else emptyList()
 
-    /** Today's finished daily total that still has to be sent to the scoreboard, if any. */
+    /** Today's best daily total if the scoreboard doesn't have it yet. */
     val pendingSubmission: Int?
         get() {
             val today = Days.today()
-            return if (lastDailyDay == today && lastSubmittedDay != today) dailyScores[today] else null
+            if (lastDailyDay != today) return null
+            val best = dailyScores[today] ?: return null
+            return if (lastSubmittedDay != today || best > lastSubmittedScore) best else null
         }
 
     val level: LevelInfo get() = Levels.of(xp)
@@ -88,14 +127,18 @@ data class Progress(
     val liveStreak: Int
         get() {
             val today = Days.today()
-            return if (lastDailyDay == today || lastDailyDay == Days.offset(today, -1)) streak else 0
+            return when {
+                lastDailyDay == today || lastDailyDay == Days.offset(today, -1) -> streak
+                lastDailyDay == Days.offset(today, -2) && shields > 0 -> streak // a Shield will save it
+                else -> 0
+            }
         }
 
-    /** True when exactly one day was missed, so a rewarded ad can save the streak. */
+    /** True when exactly one day was missed and no Shield is left, so a rewarded ad can save the streak. */
     val canSaveStreak: Boolean
         get() {
             val today = Days.today()
-            return streak >= 2 && lastDailyDay == Days.offset(today, -2)
+            return streak >= 2 && shields == 0 && lastDailyDay == Days.offset(today, -2)
         }
 
     fun skillRating(skill: Skill): Int {
@@ -193,12 +236,36 @@ object Achievements {
 
 object Daily {
     const val GAMES = 3
+    const val MAX_RETRIES = 2
 
-    /** Same three games for everyone on the same day. */
-    fun gamesFor(day: Int): List<GameId> =
-        GameId.entries.shuffled(Random(day.toLong() * 7919L)).take(GAMES)
+    /**
+     * Fixed order where any 3 games in a row train 3 different skills. Each day takes the next 3,
+     * so no game repeats from yesterday and every game comes back within 4 days.
+     */
+    private val ORDER = listOf(
+        GameId.COLOUR_CLASH, GameId.NUMBER_RUSH, GameId.QUICK_MATH, GameId.ODD_ONE_OUT, GameId.MEMORY_GRID,
+        GameId.TRUE_FALSE, GameId.ARROW_FOCUS, GameId.BIGGER, GameId.MATCH_BACK, GameId.NEXT_NUMBER,
+    )
 
-    fun seedFor(day: Int, index: Int): Long = day.toLong() * 100 + index
+    /** Retries start further along the order, so they never share a game with the first try. */
+    private val ATTEMPT_OFFSET = listOf(0, 4, 7)
+
+    /** Same games for everyone on the same day. [attempt] 1–2 are the Premium retries. */
+    fun gamesFor(day: Int, attempt: Int = 0): List<GameId> {
+        val start = ((Days.epochDay(day) * GAMES + ATTEMPT_OFFSET[attempt.coerceIn(0, 2)]) % ORDER.size).toInt()
+        return List(GAMES) { ORDER[(start + it) % ORDER.size] }
+    }
+
+    fun seedFor(day: Int, index: Int, attempt: Int = 0): Long = day.toLong() * 100 + attempt * 10 + index
+}
+
+/** Daily-open calendar and share rewards. Premium players get double XP. */
+object Rewards {
+    val openXp = listOf(20, 30, 40, 50, 60, 80, 100)
+    const val SHARE_XP = 50
+
+    /** The last day of the 7-day calendar also gives a Streak Shield. */
+    fun givesShield(index: Int) = index == 6
 }
 
 /** Pure state changes, so the rules can be unit-tested without Android. */
@@ -222,18 +289,54 @@ object Rules {
      * After the last game the day is marked done and the streak goes up.
      */
     fun recordDailyGame(p: Progress, score: Int, today: Int = Days.today()): Progress {
-        if (p.lastDailyDay == today) return p
+        val attempt = if (p.dailyProgressDay == today) p.dailyAttempt else 0
+        if (attempt == 0 && p.lastDailyDay == today) return p
         val done = (if (p.dailyProgressDay == today) p.dailyProgressScores else emptyList()) + score
-        val next = p.copy(dailyProgressDay = today, dailyProgressScores = done)
-        return if (done.size >= Daily.GAMES) completeDaily(next, done.sum(), today) else next
+        if (done.size > Daily.GAMES) return p
+        val next = p.copy(dailyProgressDay = today, dailyProgressScores = done, dailyAttempt = attempt)
+        if (done.size < Daily.GAMES) return next
+        return if (attempt == 0) {
+            completeDaily(next, done.sum(), today)
+        } else {
+            // Premium retry: the best total of the day counts.
+            val best = maxOf(next.dailyScores[today] ?: 0, done.sum())
+            next.copy(dailyScores = next.dailyScores + (today to best))
+        }
+    }
+
+    /** Premium: start another try of today's challenge with different games. */
+    fun startRetry(p: Progress, today: Int = Days.today()): Progress =
+        if (!p.premium || !p.canStartRetry) p
+        else p.copy(dailyProgressDay = today, dailyAttempt = p.currentAttempt + 1, dailyProgressScores = emptyList())
+
+    /** Daily-open reward. Returns the new progress, the XP given and whether a Shield was given. */
+    fun claimOpenReward(p: Progress, today: Int = Days.today()): Triple<Progress, Int, Boolean> {
+        if (!p.openRewardAvailable) return Triple(p, 0, false)
+        val i = p.nextOpenRewardIndex
+        val xp = Rewards.openXp[i] * (if (p.premium) 2 else 1)
+        val shield = Rewards.givesShield(i)
+        val next = p.copy(
+            xp = p.xp + xp, lastOpenRewardDay = today, openRewardIndex = i,
+            shields = p.shields + if (shield) 1 else 0,
+        )
+        return Triple(next, xp, shield)
+    }
+
+    /** Once a day for sharing. Returns the new progress and the XP given (0 if already claimed). */
+    fun claimShareReward(p: Progress, today: Int = Days.today()): Pair<Progress, Int> {
+        if (!p.shareRewardAvailable) return p to 0
+        val xp = Rewards.SHARE_XP * (if (p.premium) 2 else 1)
+        return p.copy(xp = p.xp + xp, lastShareRewardDay = today) to xp
     }
 
     fun completeDaily(p: Progress, total: Int, today: Int = Days.today()): Progress {
         if (p.lastDailyDay == today) return p
-        val newStreak = if (p.lastDailyDay == Days.offset(today, -1)) p.streak + 1 else 1
+        val keptByShield = p.lastDailyDay == Days.offset(today, -2) && p.shields > 0 && p.streak > 0
+        val newStreak = if (p.lastDailyDay == Days.offset(today, -1) || keptByShield) p.streak + 1 else 1
         val scores = (p.dailyScores + (today to total)).entries
             .sortedByDescending { it.key }.take(60).associate { it.key to it.value }
         return p.copy(
+            shields = if (keptByShield) p.shields - 1 else p.shields,
             streak = newStreak,
             bestStreak = maxOf(p.bestStreak, newStreak),
             lastDailyDay = today,

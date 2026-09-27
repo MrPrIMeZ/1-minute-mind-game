@@ -210,7 +210,11 @@ private fun Segmented(labels: List<String>, selected: Int, onSelect: (Int) -> Un
 @Composable
 private fun RankRow(r: BoardRow, showState: Boolean) {
     val medal = when (r.rank) { 1 -> "🥇"; 2 -> "🥈"; 3 -> "🥉"; else -> null }
-    val bg = if (r.isMe) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface
+    val bg = when {
+        r.isMe -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        r.isPremium -> Color(0xFFFFC857).copy(alpha = 0.16f)
+        else -> MaterialTheme.colorScheme.surface
+    }
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(bg).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -220,11 +224,16 @@ private fun RankRow(r: BoardRow, showState: Boolean) {
             else Text("#${r.rank}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(Modifier.weight(1f)) {
-            Text(
-                r.name + if (r.isMe) "  (you)" else "",
-                fontWeight = if (r.isMe) FontWeight.ExtraBold else FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    r.name + if (r.isMe) "  (you)" else "",
+                    fontWeight = if (r.isMe) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (r.isPremium) Color(0xFFD4A017) else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (r.isPremium) { HGap(6.dp); AnimatedCrown(16) }
+            }
             if (showState) Text(r.state, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
         }
         Text("${r.score}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
