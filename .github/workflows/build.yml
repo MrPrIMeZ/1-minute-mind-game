@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,6 +34,17 @@ jobs:
         with:
           name: 1-minute-mind-test-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish test APK as a phone-friendly download
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk 1-minute-mind-test.apk
+          gh release delete test-build --yes --cleanup-tag || true
+          gh release create test-build 1-minute-mind-test.apk \
+            --prerelease --title "Test build ${{ github.run_number }}" \
+            --notes "Latest test APK (test ads). Download 1-minute-mind-test.apk on your phone and install it."
 
       - name: Build Play Store bundle (AAB)
         if: env.KEYSTORE_BASE64 != ''
