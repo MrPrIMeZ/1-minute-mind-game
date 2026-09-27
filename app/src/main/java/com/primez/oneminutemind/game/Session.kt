@@ -52,7 +52,7 @@ class GameSession(val game: GameId, seed: Long) {
         val r = round
         if (r is ChoiceRound && r.free) {
             round = generator.next(correct)
-            return Outcome(true, 0, 0, false)
+            return Outcome(true, 0, 0L, false)
         }
         val outcome = if (isCorrect) {
             val before = multiplier
@@ -62,11 +62,11 @@ class GameSession(val game: GameId, seed: Long) {
             if (r is MemoryRound) bestMemory = maxOf(bestMemory, r.lit.size)
             val pts = basePoints(r) * multiplier
             score += pts
-            Outcome(true, pts, 0, multiplier > before)
+            Outcome(true, pts, 0L, multiplier > before)
         } else {
             combo = 0
             wrong++
-            Outcome(false, 0, if (r is MemoryRound) 1_000 else 2_000, false)
+            Outcome(false, 0, if (r is MemoryRound) 1_000L else 2_000L, false)
         }
         round = generator.next(correct)
         return outcome
@@ -76,7 +76,7 @@ class GameSession(val game: GameId, seed: Long) {
     fun rushMistake(): Outcome {
         combo = 0
         wrong++
-        return Outcome(false, 0, 1_000, false)
+        return Outcome(false, 0, 1_000L, false)
     }
 
     fun result() = GameResult(game, score, correct, wrong, maxCombo, bestMemory)
