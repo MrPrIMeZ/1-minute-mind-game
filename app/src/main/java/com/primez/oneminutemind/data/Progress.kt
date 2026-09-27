@@ -77,7 +77,7 @@ data class Progress(
     /** Last day whose daily total was sent to the scoreboard, and the total sent. */
     val lastSubmittedDay: Int = 0,
     val lastSubmittedScore: Int = 0,
-    /** Which try of today's challenge [dailyProgressScores] belongs to (0 = first, 1–2 = Premium retries). */
+    /** Which try of today's challenge [dailyProgressScores] belongs to (0 = first, 1 = the Premium retry). */
     val dailyAttempt: Int = 0,
     val premium: Boolean = false,
     /** Streak Shields: each one saves the streak for one missed day. */
@@ -147,7 +147,8 @@ data class Progress(
         return if (ratings.isEmpty()) 0 else ratings.average().toInt()
     }
 
-    val brainScore: Int get() = Skill.entries.sumOf { skillRating(it) } * 2
+    /** 0–100: the average of the five skill ratings. */
+    val brainScore: Int get() = Skill.entries.sumOf { skillRating(it) } / Skill.entries.size
 
     fun bestDaily(): Int = dailyScores.values.maxOrNull() ?: 0
 }
@@ -203,7 +204,7 @@ object Achievements {
         Achievement("allgames", "🗺️", "Explorer", "Play every game at least once"),
         Achievement("level5", "⭐", "Rising Star", "Reach level 5"),
         Achievement("level15", "🌠", "Big Brain", "Reach level 15"),
-        Achievement("brain500", "🏆", "Top Mind", "Reach a Brain Score of 500"),
+        Achievement("brain50", "🏆", "Top Mind", "Reach a Brain Score of 50"),
     )
 
     fun byId(id: String) = all.firstOrNull { it.id == id }
@@ -229,14 +230,15 @@ object Achievements {
         unlock("allgames", GameId.entries.all { (p.playsPerGame[it] ?: 0) > 0 })
         unlock("level5", p.level.level >= 5)
         unlock("level15", p.level.level >= 15)
-        unlock("brain500", p.brainScore >= 500)
+        unlock("brain50", p.brainScore >= 50)
         return got
     }
 }
 
 object Daily {
     const val GAMES = 3
-    const val MAX_RETRIES = 2
+    /** Premium only: one extra try per day. */
+    const val MAX_RETRIES = 1
 
     /**
      * Fixed order where any 3 games in a row train 3 different skills. Each day takes the next 3,
@@ -247,10 +249,10 @@ object Daily {
         GameId.TRUE_FALSE, GameId.ARROW_FOCUS, GameId.BIGGER, GameId.MATCH_BACK, GameId.NEXT_NUMBER,
     )
 
-    /** Retries start further along the order, so they never share a game with the first try. */
+    /** The retry starts further along the order, so it never shares a game with the first try. */
     private val ATTEMPT_OFFSET = listOf(0, 4, 7)
 
-    /** Same games for everyone on the same day. [attempt] 1–2 are the Premium retries. */
+    /** Same games for everyone on the same day. [attempt] 1 is the Premium retry. */
     fun gamesFor(day: Int, attempt: Int = 0): List<GameId> {
         val start = ((Days.epochDay(day) * GAMES + ATTEMPT_OFFSET[attempt.coerceIn(0, 2)]) % ORDER.size).toInt()
         return List(GAMES) { ORDER[(start + it) % ORDER.size] }

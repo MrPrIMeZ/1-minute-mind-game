@@ -116,7 +116,7 @@ fun StatsScreen(vm: AppViewModel) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Brain Score", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${p.brainScore}", fontSize = 64.sp, fontWeight = FontWeight.Black, color = Brand.violet)
-                        Text("out of 1000", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("out of 100", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Gap()
                         Skill.entries.forEach { s ->
                             Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

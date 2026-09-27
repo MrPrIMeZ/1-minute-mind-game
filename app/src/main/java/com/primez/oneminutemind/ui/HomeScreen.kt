@@ -129,7 +129,7 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                     Text("DAILY CHALLENGE", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
                     Text(
                         when {
-                            p.retryInProgress -> "Retry ${p.currentAttempt} · ${p.todayDailyScores.size} of 3 done"
+                            p.retryInProgress -> "Retry · ${p.todayDailyScores.size} of 3 done"
                             done -> "Completed today ✓"
                             p.todayDailyScores.isNotEmpty() -> "${p.todayDailyScores.size} of 3 done"
                             else -> "3 games · 3 minutes"
@@ -179,8 +179,8 @@ private fun DailyCard(vm: AppViewModel, onSaveStreak: () -> Unit) {
                 if (p.canStartRetry) {
                     Gap(8.dp)
                     GhostOnColor(
-                        if (p.premium) "👑 Retry with 3 new games (${p.retriesLeft} left) · best total counts"
-                        else "👑 Retry with new games · Premium",
+                        if (p.premium) "👑 Use your 1 retry: 3 new games · better total counts"
+                        else "🔒 Retry with new games is for Premium members",
                         enabled = true, onClick = vm::startRetry,
                     )
                 }

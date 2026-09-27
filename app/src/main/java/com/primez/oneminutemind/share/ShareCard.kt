@@ -84,7 +84,7 @@ object ShareCard {
         y += 260f
         c.drawText("${p.brainScore}", W / 2f, y, text(260f, if (premium) gold else white))
         y += 60f
-        c.drawText("out of 1000", W / 2f, y, text(44f, bold = false, alpha = 210))
+        c.drawText("out of 100", W / 2f, y, text(44f, bold = false, alpha = 210))
         y += 80f
         c.drawText("Level ${p.level.level} · ${p.level.title}", W / 2f, y, text(52f))
         headline?.let { y += 70f; c.drawText(it, W / 2f, y, text(46f, if (premium) gold else white)) }

@@ -72,7 +72,7 @@ fun PremiumScreen(vm: AppViewModel) {
                 )
                 Gap(28.dp)
                 Perk("🔁", "Retry the daily ranked challenge",
-                    "Up to 2 more tries every day with 3 different games. Your best total goes on the scoreboard.")
+                    "1 extra try every day with 3 different games. Your better total goes on the scoreboard.")
                 Perk("🚫", "No ads",
                     "No banners and no full-screen ads. Rewards like +15 seconds and double XP are free, no video needed.")
                 Perk("✨", "Gold share card & scoreboard crown",
