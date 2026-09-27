@@ -215,10 +215,8 @@ private fun BrainCard(vm: AppViewModel) {
     Card(onClick = { vm.go(Screen.Stats) }) {
         Column {
             TodayBrain(vm, big = false)
-            if (vm.progress.hasBrainToday) {
-                Gap(12.dp)
-                ShareButtons(vm)
-            }
+            Gap(12.dp)
+            ShareButtons(vm)
         }
     }
 }
@@ -268,20 +266,32 @@ fun TodayBrain(vm: AppViewModel, big: Boolean) {
 fun ShareButtons(vm: AppViewModel, headline: String? = null) {
     val context = LocalContext.current
     val p = vm.progress
+    // Before today's challenge is finished there is no Brain Score to show yet, so the buttons
+    // explain that instead of sharing an empty picture.
+    fun share(toWhatsApp: Boolean) {
+        if (!p.hasBrainToday) {
+            vm.toast = "🧠 Finish today's challenge first, then share your Brain Score!"
+            return
+        }
+        vm.share(context, toWhatsApp = toWhatsApp, headline = headline)
+    }
     Column {
         Text(
-            if (p.shareRewardAvailable) "📣 Share your Brain Score · +${Rewards.SHARE_XP * (if (p.premium) 2 else 1)} XP today"
-            else "📣 Share your Brain Score (today's reward claimed)",
+            when {
+                !p.hasBrainToday -> "📣 Share your Brain Score after today's challenge"
+                p.shareRewardAvailable -> "📣 Share your Brain Score · +${Rewards.SHARE_XP * (if (p.premium) 2 else 1)} XP today"
+                else -> "📣 Share your Brain Score (today's reward claimed)"
+            },
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Gap(8.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(Modifier.weight(1f)) {
-                BigButton("WhatsApp", onClick = { vm.share(context, toWhatsApp = true, headline = headline) }, color = Color(0xFF25D366))
+                BigButton("WhatsApp", onClick = { share(true) }, color = Color(0xFF25D366))
             }
             Box(Modifier.weight(1f)) {
-                BigButton("More apps", onClick = { vm.share(context, toWhatsApp = false, headline = headline) })
+                BigButton("More apps", onClick = { share(false) })
             }
         }
     }

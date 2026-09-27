@@ -112,7 +112,7 @@ fun StatsScreen(vm: AppViewModel) {
         TopBar("Your stats", onBack = { vm.back() })
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Card { TodayBrain(vm, big = true) } }
-            if (p.hasBrainToday) item { Card { ShareButtons(vm) } }
+            item { Card { ShareButtons(vm) } }
             item {
                 Card {
                     Column {
