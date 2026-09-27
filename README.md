@@ -25,7 +25,7 @@ Locally: open the folder in Android Studio, or run `./gradlew assembleDebug`.
 ## Going live checklist
 1. AdMob: create the app + 3 ad units (banner, interstitial, rewarded), put the IDs in `gradle.properties`, set `ADS_TESTING=false`, and add `app-ads.txt` details.
 2. Privacy policy: `docs/privacy-policy.html` is served by GitHub Pages at
-   https://mrprimez.github.io/1-minute-mind-game/privacy-policy.html (fill in the contact email).
+   https://mrprimez.github.io/1-minute-mind-game/privacy-policy.html .
 3. Play Console: create the app, fill in the store listing from `store/store-listing.md`, and upload the AAB.
 
 The signing key is **never** committed (see `.gitignore`).
